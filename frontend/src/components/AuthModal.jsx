@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Lock, Mail, User, Loader, ShieldCheck } from 'lucide-react'
+import { X, Loader } from 'lucide-react'
 import { login, register } from '../api'
 
 export default function AuthModal({ isOpen, onClose, onSuccess }) {
@@ -37,54 +37,49 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 animate-fadeIn"
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-fadeIn"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md bg-black border border-white/15 rounded-2xl p-7 shadow-2xl"
+        className="relative w-full max-w-[420px] bg-[#0c0c0c] border border-white/15 rounded-2xl p-8 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-1 rounded text-white/40 hover:text-white transition-colors"
+          className="absolute top-6 right-6 p-1 rounded-md text-white/40 hover:text-white transition-colors"
         >
           <X size={18} />
         </button>
 
         {/* Modal Header */}
         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="w-6 h-6 rounded-full border border-white/20 flex items-center justify-center">
-              <ShieldCheck size={13} className="text-white" />
-            </span>
-            <span className="text-[12px] font-mono tracking-widest uppercase text-white/50">
-              ATLAS VAULT SECURITY
-            </span>
-          </div>
-          <h3 className="text-xl font-semibold text-white tracking-tight">
-            {isSignUp ? 'Create Private Vault' : 'Access Private Vault'}
+          <p className="text-xs font-normal tracking-wide text-white/50 mb-1.5 uppercase">
+            Atlas Vault Security
+          </p>
+          <h3 className="text-xl font-medium text-white tracking-tight">
+            {isSignUp ? 'Create private vault' : 'Access private vault'}
           </h3>
-          <p className="text-[13px] text-white/50 mt-1 font-sans">
+          <p className="text-sm text-white/55 mt-1 leading-relaxed">
             {isSignUp
-              ? 'Your captures will be encrypted and accessible only to your account.'
-              : 'Sign in to decrypt and browse your private candid memory vault.'}
+              ? 'Your captures will be isolated and encrypted for your account.'
+              : 'Sign in to access your personal candid memory vault.'}
           </p>
         </div>
 
         {/* Mode Switch Tabs */}
-        <div className="flex items-center p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08] mb-5">
+        <div className="flex p-1 rounded-lg bg-white/[0.04] border border-white/10 mb-6">
           <button
             type="button"
             onClick={() => {
               setIsSignUp(false)
               setError('')
             }}
-            className={`flex-1 py-1.5 rounded-md text-[12px] font-medium transition-all ${
+            className={`flex-1 py-2 rounded-md text-xs font-medium transition-all ${
               !isSignUp ? 'bg-white text-black font-semibold' : 'text-white/50 hover:text-white'
             }`}
           >
-            SIGN IN
+            Sign in
           </button>
           <button
             type="button"
@@ -92,92 +87,82 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
               setIsSignUp(true)
               setError('')
             }}
-            className={`flex-1 py-1.5 rounded-md text-[12px] font-medium transition-all ${
+            className={`flex-1 py-2 rounded-md text-xs font-medium transition-all ${
               isSignUp ? 'bg-white text-black font-semibold' : 'text-white/50 hover:text-white'
             }`}
           >
-            CREATE ACCOUNT
+            Create account
           </button>
         </div>
 
         {/* Error Banner */}
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-white/[0.04] border border-white/20 text-[12px] font-mono text-white/90">
+          <div className="mb-5 p-3 rounded-lg bg-white/[0.06] border border-white/20 text-xs text-white leading-relaxed">
             {error}
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        {/* Form Fields with Generous Spacing */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {isSignUp && (
-            <div>
-              <label className="text-[11px] font-mono uppercase tracking-wider text-white/50 block mb-1.5">
-                Full Name
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-white/70">
+                Full name
               </label>
-              <div className="relative">
-                <User size={15} className="absolute top-1/2 -translate-y-1/2 left-3 text-white/30" />
-                <input
-                  type="text"
-                  placeholder="e.g. Samarth"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-lg bg-black border border-white/15 text-[13px] text-white placeholder-white/25 focus:outline-none focus:border-white transition-all font-sans"
-                />
-              </div>
+              <input
+                type="text"
+                placeholder="e.g. Samarth"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="w-full h-11 px-3.5 rounded-lg bg-[#111111] border border-white/15 text-sm text-white placeholder-white/30 focus:border-white focus:outline-none transition-colors"
+              />
             </div>
           )}
 
-          <div>
-            <label className="text-[11px] font-mono uppercase tracking-wider text-white/50 block mb-1.5">
-              Email Address
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-white/70">
+              Email address
             </label>
-            <div className="relative">
-              <Mail size={15} className="absolute top-1/2 -translate-y-1/2 left-3 text-white/30" />
-              <input
-                id="auth-email-input"
-                type="email"
-                required
-                placeholder="you@domain.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-lg bg-black border border-white/15 text-[13px] text-white placeholder-white/25 focus:outline-none focus:border-white transition-all font-sans"
-              />
-            </div>
+            <input
+              id="auth-email-input"
+              type="email"
+              required
+              placeholder="you@domain.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full h-11 px-3.5 rounded-lg bg-[#111111] border border-white/15 text-sm text-white placeholder-white/30 focus:border-white focus:outline-none transition-colors"
+            />
           </div>
 
-          <div>
-            <label className="text-[11px] font-mono uppercase tracking-wider text-white/50 block mb-1.5">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-white/70">
               Password
             </label>
-            <div className="relative">
-              <Lock size={15} className="absolute top-1/2 -translate-y-1/2 left-3 text-white/30" />
-              <input
-                id="auth-password-input"
-                type="password"
-                required
-                minLength={6}
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-lg bg-black border border-white/15 text-[13px] text-white placeholder-white/25 focus:outline-none focus:border-white transition-all font-sans"
-              />
-            </div>
+            <input
+              id="auth-password-input"
+              type="password"
+              required
+              minLength={6}
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full h-11 px-3.5 rounded-lg bg-[#111111] border border-white/15 text-sm text-white placeholder-white/30 focus:border-white focus:outline-none transition-colors"
+            />
           </div>
 
           <button
             id="auth-submit-button"
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-3 rounded-lg text-[13px] font-semibold bg-white text-black hover:bg-white/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 font-sans"
+            className="w-full h-11 mt-2 rounded-lg text-sm font-medium bg-white text-black hover:bg-white/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
           >
-            {loading && <Loader size={14} className="animate-spin" />}
-            <span>{isSignUp ? 'CREATE ACCOUNT & OPEN VAULT' : 'SIGN IN TO VAULT'}</span>
+            {loading && <Loader size={15} className="animate-spin" />}
+            <span>{isSignUp ? 'Create account' : 'Sign in to vault'}</span>
           </button>
         </form>
 
-        {/* Footer Note */}
-        <p className="text-[11px] font-mono text-white/30 text-center mt-5">
-          CREDENTIALS SECURED VIA BCRYPT & ATLAS CLOUD
+        <p className="text-xs text-white/35 text-center mt-6">
+          Encrypted with bcrypt on MongoDB Atlas
         </p>
       </div>
     </div>

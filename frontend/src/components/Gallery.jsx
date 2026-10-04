@@ -5,7 +5,6 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Filter,
   Loader,
   ImageOff,
   ZoomIn,
@@ -18,10 +17,10 @@ import {
 import { getGallery, searchGallery, deleteMoment, resolveImageUrl } from '../api'
 
 const CLASSIFICATION_OPTIONS = [
-  { value: '', label: 'ALL MEMORIES' },
-  { value: 'SPECIFIC_CANDID', label: 'DEEP CANDID' },
-  { value: 'GENERAL_CANDID', label: 'AMBIENT CANDID' },
-  { value: 'POSED', label: 'POSED' },
+  { value: '', label: 'All memories' },
+  { value: 'SPECIFIC_CANDID', label: 'Deep candid' },
+  { value: 'GENERAL_CANDID', label: 'Ambient candid' },
+  { value: 'POSED', label: 'Posed' },
 ]
 
 function getBadgeProps(cls) {
@@ -29,22 +28,22 @@ function getBadgeProps(cls) {
     case 'SPECIFIC_CANDID':
       return {
         className: 'bg-white text-black font-semibold',
-        label: 'DEEP CANDID',
+        label: 'Deep candid',
       }
     case 'GENERAL_CANDID':
       return {
         className: 'bg-white/10 text-white/90 border border-white/20',
-        label: 'AMBIENT CANDID',
+        label: 'Ambient candid',
       }
     case 'POSED':
       return {
         className: 'bg-white/[0.04] text-white/50 border border-white/10',
-        label: 'POSED',
+        label: 'Posed',
       }
     default:
       return {
         className: 'bg-white/[0.02] text-white/40 border border-white/10',
-        label: 'MOMENT',
+        label: 'Moment',
       }
   }
 }
@@ -57,15 +56,15 @@ function formatMomentTime(isoStr) {
     const diffMs = now - d
     const diffMins = Math.floor(diffMs / 60000)
 
-    if (diffMins < 1) return 'JUST NOW'
-    if (diffMins < 60) return `${diffMins}M AGO`
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
 
     return d.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    }).toUpperCase()
+    })
   } catch {
     return isoStr
   }
@@ -175,22 +174,22 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
 
   if (!user) {
     return (
-      <div className="w-full min-h-[calc(100vh-3.5rem)] bg-black text-white flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center border border-white/10 rounded-2xl p-8 bg-white/[0.02]">
+      <div className="w-full min-h-[calc(100vh-4rem)] bg-black text-white flex items-center justify-center p-8">
+        <div className="max-w-md w-full text-center border border-white/10 rounded-2xl p-10 bg-[#0a0a0a]">
           <div className="w-14 h-14 rounded-full border border-white/20 flex items-center justify-center mx-auto mb-5 text-white/70">
             <Lock size={22} />
           </div>
-          <h2 className="text-xl font-semibold text-white tracking-tight mb-2">
+          <h2 className="text-xl font-medium text-white tracking-tight mb-2">
             Private Vault Encrypted
           </h2>
-          <p className="text-[13px] text-white/50 leading-relaxed font-sans mb-6">
-            All captured moments in this vault are privately partitioned on MongoDB Atlas and isolated to their owner. Sign in or register to browse your personal memory vault.
+          <p className="text-sm text-white/55 leading-relaxed mb-8">
+            Every moment in this vault is privately partitioned on MongoDB Atlas and isolated to its owner. Sign in or register to browse your personal memory vault.
           </p>
           <button
             onClick={onOpenAuth}
-            className="w-full py-3 rounded-lg text-[13px] font-semibold bg-white text-black hover:bg-white/90 transition-all font-sans"
+            className="w-full h-11 rounded-lg text-sm font-medium bg-white text-black hover:bg-white/90 transition-all"
           >
-            SIGN IN OR CREATE VAULT
+            Sign in or create vault
           </button>
         </div>
       </div>
@@ -198,32 +197,28 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
   }
 
   return (
-    <div className="w-full min-h-[calc(100vh-3.5rem)] bg-black text-white px-6 lg:px-12 py-8">
+    <div className="w-full min-h-[calc(100vh-4rem)] bg-black text-white px-6 lg:px-12 py-10">
       {/* ── Search & Filter Controls ───────────────────────── */}
-      <div className="max-w-[1800px] mx-auto mb-10 space-y-4">
+      <div className="max-w-[1500px] mx-auto mb-10 flex flex-col gap-5">
         {/* Search Bar */}
-        <div className="flex flex-col sm:flex-row gap-2.5">
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <div className="absolute top-1/2 -translate-y-1/2 left-4 pointer-events-none text-white/40">
-              <Search size={16} />
-            </div>
-
             <input
               id="search-input"
               type="text"
-              placeholder="Search moments by semantic query (e.g. 'laughing at table', 'deep focus reading')..."
+              placeholder="Search memories by semantic query (e.g. 'laughing at table', 'deep focus reading')..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              className="w-full pl-11 pr-10 py-3.5 rounded-lg bg-black border border-white/15 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-white transition-all font-sans"
+              className="w-full h-12 px-4 pr-10 rounded-xl bg-[#0c0c0c] border border-white/15 text-sm text-white placeholder-white/30 focus:border-white focus:outline-none transition-colors"
             />
 
             {searchQuery && (
               <button
                 onClick={clearSearch}
-                className="absolute top-1/2 -translate-y-1/2 right-3.5 p-1 rounded text-white/40 hover:text-white transition-colors"
+                className="absolute top-1/2 -translate-y-1/2 right-3.5 p-1 rounded-md text-white/40 hover:text-white transition-colors"
               >
-                <X size={15} />
+                <X size={16} />
               </button>
             )}
           </div>
@@ -232,17 +227,17 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
             id="search-button"
             onClick={handleSearch}
             disabled={isSearching}
-            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg text-[13px] font-medium bg-white text-black hover:bg-white/90 disabled:opacity-50 transition-all font-sans shrink-0"
+            className="h-12 px-6 rounded-xl text-sm font-medium bg-white text-black hover:bg-white/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shrink-0"
           >
             {isSearching ? <Loader size={14} className="animate-spin" /> : null}
-            <span>SEARCH</span>
+            <span>Search</span>
           </button>
         </div>
 
-        {/* Filter Toolbar */}
+        {/* Filter Toolbar with Generous Spacing */}
         <div className="flex items-center justify-between gap-4 flex-wrap pt-1">
           {/* Classification Filter Tabs */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {CLASSIFICATION_OPTIONS.map(opt => {
               const isSelected = classFilter === opt.value
               return (
@@ -253,10 +248,10 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
                     setPage(1)
                     setSearchResults(null)
                   }}
-                  className={`px-3 py-1.5 rounded-md text-[11px] font-mono tracking-wider transition-all ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     isSelected
                       ? 'bg-white text-black font-semibold'
-                      : 'bg-white/[0.03] text-white/50 border border-white/10 hover:text-white hover:border-white/25'
+                      : 'bg-white/[0.03] text-white/60 border border-white/10 hover:text-white hover:border-white/25'
                   }`}
                 >
                   {opt.label}
@@ -267,9 +262,9 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
 
           {/* Popular Mood Tags */}
           {popularTags.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-white/30 mr-1 flex items-center gap-1">
-                <Tag size={10} /> TAGS:
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-white/40 mr-1 flex items-center gap-1.5">
+                <Tag size={12} /> Tags:
               </span>
               {popularTags.map(tag => {
                 const isSelected = activeTag === tag
@@ -285,10 +280,10 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
                         setSearchResults(null)
                       }
                     }}
-                    className={`px-2 py-0.5 rounded text-[11px] font-mono transition-all ${
+                    className={`px-2.5 py-1 rounded-md text-xs transition-all ${
                       isSelected
                         ? 'bg-white text-black font-semibold'
-                        : 'bg-white/[0.02] text-white/50 border border-white/10 hover:border-white/25 hover:text-white'
+                        : 'bg-white/[0.02] text-white/55 border border-white/10 hover:border-white/25 hover:text-white'
                     }`}
                   >
                     #{tag}
@@ -298,9 +293,9 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
               {activeTag && (
                 <button
                   onClick={() => setActiveTag('')}
-                  className="text-[10px] font-mono text-white/40 underline hover:text-white ml-1 uppercase"
+                  className="text-xs text-white/40 underline hover:text-white ml-1"
                 >
-                  RESET
+                  Clear
                 </button>
               )}
             </div>
@@ -309,41 +304,41 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
 
         {/* Active Search Results Notice */}
         {searchResults && (
-          <div className="flex items-center justify-between px-4 py-2 rounded-lg bg-white/[0.04] border border-white/15 text-[12px] font-mono text-white/80">
+          <div className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-white/[0.04] border border-white/15 text-xs text-white/80">
             <span>
-              {searchResults.length} RESULT{searchResults.length !== 1 ? 'S' : ''} FOR: <strong className="text-white">"{searchQuery}"</strong>
+              {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for: <strong className="text-white">"{searchQuery}"</strong>
             </span>
             <button
               onClick={clearSearch}
-              className="text-[11px] font-mono text-white/40 hover:text-white underline uppercase"
+              className="text-xs text-white/50 hover:text-white underline"
             >
-              CLEAR
+              Reset
             </button>
           </div>
         )}
       </div>
 
-      {/* ── Grid Container ─────────────────────────────────── */}
-      <div className="max-w-[1800px] mx-auto">
+      {/* ── Grid Container with Generous Spacing ───────────── */}
+      <div className="max-w-[1500px] mx-auto">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-36 gap-3">
             <Loader size={20} className="animate-spin text-white/40" />
-            <p className="text-[12px] font-mono text-white/40 uppercase tracking-widest">
-              LOADING VAULT...
+            <p className="text-xs text-white/40 uppercase tracking-wider">
+              Loading vault...
             </p>
           </div>
         ) : displayMoments.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-36 px-4 text-center border border-dashed border-white/10 rounded-2xl">
-            <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center text-white/30 mb-3">
+          <div className="flex flex-col items-center justify-center py-32 px-6 text-center border border-dashed border-white/10 rounded-2xl">
+            <div className="w-12 h-12 rounded-full border border-white/15 flex items-center justify-center text-white/30 mb-3">
               <ImageOff size={20} />
             </div>
-            <h3 className="text-[14px] font-medium text-white mb-1">
-              NO MOMENTS FOUND
+            <h3 className="text-base font-medium text-white mb-1.5">
+              No moments found
             </h3>
-            <p className="text-[12px] text-white/40 max-w-sm mb-5 leading-relaxed font-sans">
+            <p className="text-xs text-white/50 max-w-sm mb-6 leading-relaxed">
               {searchQuery || classFilter || activeTag
                 ? 'No moments match your current filter parameters.'
-                : 'Switch to Studio camera mode to capture and curate candid memories.'}
+                : 'Switch to Studio camera mode to capture candid memories.'}
             </p>
             {(searchQuery || classFilter || activeTag) && (
               <button
@@ -352,14 +347,14 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
                   setClassFilter('')
                   setActiveTag('')
                 }}
-                className="px-3.5 py-1.5 rounded text-[11px] font-mono bg-white text-black font-semibold hover:bg-white/90 transition-all uppercase"
+                className="px-4 py-2 rounded-lg text-xs font-medium bg-white text-black hover:bg-white/90 transition-all"
               >
-                RESET FILTERS
+                Reset filters
               </button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8">
             {displayMoments.map((m, idx) => {
               const imgUrl = resolveImageUrl(m.cloudinary_url || m.filepath)
               const badge = getBadgeProps(m.classification)
@@ -368,7 +363,7 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
                 <div
                   key={m.id || idx}
                   onClick={() => setLightboxItem(m)}
-                  className="group bg-black border border-white/[0.08] hover:border-white/30 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 flex flex-col"
+                  className="group bg-[#0a0a0a] border border-white/10 hover:border-white/30 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 flex flex-col"
                 >
                   {/* Photo Frame */}
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-black">
@@ -380,42 +375,42 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
                     />
 
                     {/* Top Status Badges */}
-                    <div className="absolute top-2.5 left-2.5 z-10">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-mono tracking-wider ${badge.className}`}>
+                    <div className="absolute top-3 left-3 z-10">
+                      <span className={`px-2.5 py-1 rounded text-xs font-medium ${badge.className}`}>
                         {badge.label}
                       </span>
                     </div>
 
-                    <div className="absolute top-2.5 right-2.5 z-10">
-                      <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-black/80 backdrop-blur-md border border-white/20 text-white">
+                    <div className="absolute top-3 right-3 z-10">
+                      <span className="px-2 py-0.5 rounded text-xs bg-black/80 backdrop-blur-md border border-white/20 text-white">
                         {m.score !== undefined
-                          ? `${(m.score * 100).toFixed(0)}% MATCH`
-                          : `${(m.confidence * 100).toFixed(0)}% CONF`}
+                          ? `${(m.score * 100).toFixed(0)}% match`
+                          : `${(m.confidence * 100).toFixed(0)}% conf`}
                       </span>
                     </div>
 
-                    {/* Quick Zoom Indicator on Hover */}
+                    {/* Hover Zoom Icon */}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <span className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center shadow-xl">
-                        <ZoomIn size={16} />
+                      <span className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-xl">
+                        <ZoomIn size={18} />
                       </span>
                     </div>
                   </div>
 
-                  {/* Metadata Content */}
-                  <div className="p-3.5 flex-1 flex flex-col justify-between gap-3">
+                  {/* Metadata Content with Generous Padding */}
+                  <div className="p-5 flex-1 flex flex-col justify-between gap-4">
                     <div>
-                      <p className="text-[13px] font-medium text-white/90 line-clamp-2 leading-snug mb-2 font-sans">
+                      <p className="text-sm font-medium text-white/90 line-clamp-2 leading-relaxed mb-3">
                         {m.caption || 'Spontaneous unposed candid moment.'}
                       </p>
 
                       {/* Tags */}
                       {m.tags && m.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1.5">
                           {m.tags.slice(0, 3).map((tag, tIdx) => (
                             <span
                               key={tIdx}
-                              className="px-1.5 py-0.5 rounded text-[10px] font-mono text-white/40 bg-white/[0.03] border border-white/[0.06]"
+                              className="px-2 py-0.5 rounded text-xs text-white/50 bg-white/[0.04] border border-white/[0.08]"
                             >
                               #{tag}
                             </span>
@@ -425,13 +420,13 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
                     </div>
 
                     {/* Card Footer */}
-                    <div className="pt-2.5 border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-white/40">
-                      <div className="flex items-center gap-1">
-                        <Clock size={11} className="text-white/30" />
+                    <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs text-white/45">
+                      <div className="flex items-center gap-1.5">
+                        <Clock size={12} className="text-white/35" />
                         <span>{formatMomentTime(m.created_at)}</span>
                       </div>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
                         {m.cloudinary_url && (
                           <a
                             href={m.cloudinary_url}
@@ -441,7 +436,7 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
                             title="Open original Cloudinary media"
                             className="p-1 rounded text-white/40 hover:text-white transition-colors"
                           >
-                            <ExternalLink size={12} />
+                            <ExternalLink size={13} />
                           </a>
                         )}
 
@@ -450,7 +445,7 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
                           title="Delete moment"
                           className="p-1 rounded text-white/40 hover:text-white transition-colors"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
@@ -463,44 +458,44 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
 
         {/* ── Pagination ─────────────────────────────────────── */}
         {!searchResults && totalPages > 1 && (
-          <div className="flex items-center justify-center gap-3 mt-12">
+          <div className="flex items-center justify-center gap-3 mt-14">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-[11px] font-mono border border-white/10 hover:border-white/30 text-white disabled:opacity-20 transition-all uppercase"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-white/30 text-white disabled:opacity-25 transition-all"
             >
               <ChevronLeft size={14} />
-              <span>PREV</span>
+              <span>Previous</span>
             </button>
 
-            <span className="px-3 py-1 rounded text-[11px] font-mono text-white/40 bg-white/[0.03] border border-white/[0.06]">
+            <span className="px-3.5 py-1.5 rounded-lg text-xs text-white/50 bg-white/[0.03] border border-white/[0.08]">
               {page} / {totalPages}
             </span>
 
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-[11px] font-mono border border-white/10 hover:border-white/30 text-white disabled:opacity-20 transition-all uppercase"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium border border-white/10 hover:border-white/30 text-white disabled:opacity-25 transition-all"
             >
-              <span>NEXT</span>
+              <span>Next</span>
               <ChevronRight size={14} />
             </button>
           </div>
         )}
       </div>
 
-      {/* ── Minimal Cinema Inspector Lightbox ──────────────── */}
+      {/* ── Cinema Inspector Lightbox ──────────────────────── */}
       {lightboxItem && (
         <div
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8 animate-fadeIn"
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex items-center justify-center p-6 md:p-10 animate-fadeIn"
           onClick={() => setLightboxItem(null)}
         >
           <div
-            className="relative w-full max-w-5xl max-h-[90vh] bg-black border border-white/15 rounded-2xl overflow-hidden flex flex-col lg:flex-row shadow-2xl"
+            className="relative w-full max-w-5xl max-h-[90vh] bg-[#0c0c0c] border border-white/15 rounded-2xl overflow-hidden flex flex-col lg:flex-row shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             {/* Left Image Viewport */}
-            <div className="flex-1 bg-black flex items-center justify-center p-4 min-h-[360px] lg:min-h-[540px]">
+            <div className="flex-1 bg-black flex items-center justify-center p-6 min-h-[360px] lg:min-h-[540px]">
               <img
                 src={resolveImageUrl(lightboxItem.cloudinary_url || lightboxItem.filepath)}
                 alt={lightboxItem.caption}
@@ -508,15 +503,15 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
               />
             </div>
 
-            {/* Right Inspector Sidebar */}
-            <div className="w-full lg:w-96 p-6 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-white/10 bg-black overflow-y-auto">
-              <div>
+            {/* Right Inspector Sidebar with Generous Spacing */}
+            <div className="w-full lg:w-[400px] p-8 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-white/10 bg-[#0c0c0c] overflow-y-auto">
+              <div className="flex flex-col gap-6">
                 {/* Header */}
-                <div className="flex items-center justify-between gap-3 mb-6">
+                <div className="flex items-center justify-between gap-3">
                   {(() => {
                     const badge = getBadgeProps(lightboxItem.classification)
                     return (
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono tracking-wider ${badge.className}`}>
+                      <span className={`px-2.5 py-1 rounded text-xs font-medium ${badge.className}`}>
                         {badge.label}
                       </span>
                     )
@@ -524,33 +519,33 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
 
                   <button
                     onClick={() => setLightboxItem(null)}
-                    className="p-1 rounded text-white/50 hover:text-white transition-colors"
+                    className="p-1 rounded-md text-white/50 hover:text-white transition-colors"
                   >
                     <X size={18} />
                   </button>
                 </div>
 
                 {/* AI Caption */}
-                <div className="mb-6">
-                  <h4 className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">
-                    AI VISION NARRATIVE
+                <div>
+                  <h4 className="text-xs font-medium uppercase tracking-wider text-white/40 mb-2">
+                    Vision narrative
                   </h4>
-                  <p className="text-[14px] text-white/95 font-medium leading-relaxed italic border-l border-white/40 pl-3 font-sans">
+                  <p className="text-base text-white/95 font-medium leading-relaxed italic border-l-2 border-white/40 pl-3.5">
                     "{lightboxItem.caption}"
                   </p>
                 </div>
 
                 {/* Tags */}
                 {lightboxItem.tags && lightboxItem.tags.length > 0 && (
-                  <div className="mb-6">
-                    <h4 className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">
-                      TAGS & ENERGY
+                  <div>
+                    <h4 className="text-xs font-medium uppercase tracking-wider text-white/40 mb-2">
+                      Tags & mood
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
                       {lightboxItem.tags.map((tag, idx) => (
                         <span
                           key={idx}
-                          className="px-2 py-0.5 rounded text-[11px] font-mono text-white/70 bg-white/[0.04] border border-white/10"
+                          className="px-2.5 py-1 rounded text-xs text-white/70 bg-white/[0.04] border border-white/10"
                         >
                           #{tag}
                         </span>
@@ -560,15 +555,14 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
                 )}
 
                 {/* Telemetry Metrics */}
-                <div className="space-y-3 p-3.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-[11px] font-mono">
+                <div className="flex flex-col gap-3 p-4 rounded-xl bg-white/[0.03] border border-white/10 text-xs">
                   <div className="flex justify-between items-center text-white/60">
-                    <span>AI CONFIDENCE</span>
-                    <span className="text-white font-bold">
+                    <span>AI Confidence</span>
+                    <span className="text-white font-medium">
                       {(lightboxItem.confidence * 100).toFixed(1)}%
                     </span>
                   </div>
 
-                  {/* Confidence Progress Bar */}
                   <div className="w-full bg-white/10 rounded-full h-1 overflow-hidden">
                     <div
                       className="bg-white h-full transition-all duration-300"
@@ -577,39 +571,39 @@ export default function Gallery({ user, onCountChange, onOpenAuth }) {
                   </div>
 
                   <div className="flex justify-between items-center pt-1 text-white/60">
-                    <span>CAPTURED</span>
+                    <span>Captured</span>
                     <span className="text-white">
-                      {new Date(lightboxItem.created_at).toLocaleString().toUpperCase()}
+                      {new Date(lightboxItem.created_at).toLocaleString()}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center pt-1 text-white/60">
-                    <span>INDEX TYPE</span>
-                    <span className="text-white">ATLAS 384-DIM DENSE</span>
+                    <span>Vector index</span>
+                    <span className="text-white">Atlas 384-dim dense</span>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-2 pt-6 mt-6 border-t border-white/10">
+              <div className="flex flex-col gap-2.5 pt-6 mt-6 border-t border-white/10">
                 {lightboxItem.cloudinary_url && (
                   <a
                     href={lightboxItem.cloudinary_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full py-2.5 rounded-md text-[12px] font-medium flex items-center justify-center gap-1.5 bg-white text-black hover:bg-white/90 transition-all font-sans"
+                    className="w-full h-11 rounded-lg text-xs font-medium flex items-center justify-center gap-2 bg-white text-black hover:bg-white/90 transition-all"
                   >
-                    <span>VIEW ON CLOUDINARY</span>
+                    <span>View on Cloudinary</span>
                     <ArrowUpRight size={13} />
                   </a>
                 )}
 
                 <button
                   onClick={() => handleDelete(lightboxItem.id)}
-                  className="w-full py-2.5 rounded-md text-[12px] font-mono flex items-center justify-center gap-1.5 border border-white/20 text-white/70 hover:text-white hover:border-white/50 transition-all uppercase"
+                  className="w-full h-11 rounded-lg text-xs font-medium flex items-center justify-center gap-2 border border-white/20 text-white/70 hover:text-white hover:border-white/50 transition-all"
                 >
                   <Trash2 size={13} />
-                  <span>DELETE MEMORY</span>
+                  <span>Delete memory</span>
                 </button>
               </div>
             </div>

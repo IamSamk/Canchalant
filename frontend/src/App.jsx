@@ -52,31 +52,31 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-black text-white">
+    <div className="min-h-screen flex flex-col bg-black text-white font-sans">
       {/* ── Header ─────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-black">
-        <div className="w-full px-6 lg:px-8 h-14 flex items-center justify-between">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/95 backdrop-blur-md">
+        <div className="w-full max-w-[1600px] mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
           {/* Brand */}
           <div className="flex items-center gap-3">
-            <span className="text-[15px] font-semibold tracking-[-0.02em]">
+            <span className="text-base font-semibold tracking-tight text-white">
               Canchalant
             </span>
-            <span className="text-[11px] font-mono text-white/30 hidden sm:inline">
+            <span className="text-xs text-white/40 hidden sm:inline">
               candid memory assistant
             </span>
           </div>
 
           {/* Navigation & Controls */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             {/* Tab Switcher */}
-            <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+            <div className="flex items-center p-1 rounded-lg bg-white/[0.04] border border-white/10">
               <button
                 id="nav-camera"
                 onClick={() => setActiveTab('camera')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all duration-150 ${
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
                   activeTab === 'camera'
                     ? 'bg-white text-black'
-                    : 'text-white/50 hover:text-white/80'
+                    : 'text-white/60 hover:text-white'
                 }`}
               >
                 <Camera size={14} />
@@ -86,17 +86,17 @@ export default function App() {
               <button
                 id="nav-gallery"
                 onClick={() => setActiveTab('gallery')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all duration-150 ${
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
                   activeTab === 'gallery'
                     ? 'bg-white text-black'
-                    : 'text-white/50 hover:text-white/80'
+                    : 'text-white/60 hover:text-white'
                 }`}
               >
                 <LayoutGrid size={14} />
                 <span>Vault</span>
                 {user && memoryCount > 0 && (
-                  <span className={`text-[11px] font-mono ${
-                    activeTab === 'gallery' ? 'text-black/60' : 'text-white/30'
+                  <span className={`text-xs ml-1 ${
+                    activeTab === 'gallery' ? 'text-black/70 font-semibold' : 'text-white/40'
                   }`}>
                     {memoryCount}
                   </span>
@@ -106,10 +106,10 @@ export default function App() {
 
             {/* Auth Profile / Sign In Button */}
             {user ? (
-              <div className="flex items-center gap-2 pl-2 border-l border-white/[0.08]">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.03] border border-white/[0.08]">
-                  <UserIcon size={12} className="text-white/50" />
-                  <span className="text-[11px] font-mono text-white/80 max-w-[120px] truncate">
+              <div className="flex items-center gap-2.5 pl-3 border-l border-white/10">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/[0.04] border border-white/10">
+                  <UserIcon size={13} className="text-white/50" />
+                  <span className="text-xs text-white/80 max-w-[120px] truncate">
                     {user.name || user.email.split('@')[0]}
                   </span>
                 </div>
@@ -117,27 +117,27 @@ export default function App() {
                   id="btn-signout"
                   onClick={handleSignOut}
                   title="Sign out of private vault"
-                  className="p-1.5 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors"
+                  className="p-1.5 rounded-md text-white/40 hover:text-white hover:bg-white/10 transition-colors"
                 >
-                  <LogOut size={14} />
+                  <LogOut size={15} />
                 </button>
               </div>
             ) : (
               <button
                 id="btn-signin"
                 onClick={() => setAuthModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium bg-white text-black hover:bg-white/90 transition-all font-sans"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium bg-white text-black hover:bg-white/90 transition-all"
               >
-                <Shield size={12} />
-                <span>Sign In</span>
+                <Shield size={13} />
+                <span>Sign in</span>
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* ── Content ────────────────────────────────────────── */}
-      <main className="flex-1 w-full overflow-x-hidden">
+      {/* ── Main View Stage ─────────────────────────────────── */}
+      <main className="flex-1 w-full">
         {activeTab === 'camera' && (
           <CameraView
             user={user}

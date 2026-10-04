@@ -5,23 +5,15 @@ import {
   Camera,
   Zap,
   Eye,
-  Settings,
-  ChevronDown,
-  ChevronUp,
   CheckCircle,
   XCircle,
   AlertCircle,
   Loader,
-  Aperture,
   ScanLine,
   Upload,
-  ExternalLink,
   Sliders,
-  Sparkles,
   ArrowRight,
   Clock,
-  Maximize2,
-  RefreshCw,
   Shield,
 } from 'lucide-react'
 import { analyzeFrame, resolveImageUrl } from '../api'
@@ -29,34 +21,34 @@ import { analyzeFrame, resolveImageUrl } from '../api'
 const MODES = [
   {
     id: 'passive',
-    label: 'Passive Ambient',
-    desc: 'Autonomous background sentinel',
+    label: 'Passive ambient',
+    desc: 'Autonomous background sentinel capturing natural candid moments.',
     icon: Eye,
   },
   {
     id: 'manual',
-    label: 'Manual Shutter',
-    desc: 'Instant snap & emotion tag',
+    label: 'Manual shutter',
+    desc: 'Instant manual snap with automated vision analysis and emotion tagging.',
     icon: Camera,
   },
   {
     id: 'burst',
-    label: 'Burst Candid Hunt',
-    desc: 'Rapid 500ms candidate search',
+    label: 'Burst candid hunt',
+    desc: 'High-frequency 500ms sampling cycle for dynamic group interactions.',
     icon: Zap,
   },
 ]
 
 const STATUS_CONFIG = {
-  idle: { label: 'STANDBY', icon: Pause },
-  scanning: { label: 'SAMPLING FRAME', icon: ScanLine },
-  analyzing: { label: 'AI CLASSIFYING', icon: Loader },
-  captured: { label: 'CANDID CAPTURED', icon: CheckCircle },
-  cooldown: { label: 'COOLDOWN', icon: Clock },
-  rejected_blur: { label: 'MOTION BLURRED', icon: AlertCircle },
-  rejected_posed: { label: 'CAMERA FACING / POSED', icon: XCircle },
-  rejected_confidence: { label: 'BELOW CONFIDENCE', icon: AlertCircle },
-  error: { label: 'INFERENCE ERROR', icon: XCircle },
+  idle: { label: 'Standby', icon: Pause },
+  scanning: { label: 'Sampling frame', icon: ScanLine },
+  analyzing: { label: 'Analyzing frame', icon: Loader },
+  captured: { label: 'Candid captured', icon: CheckCircle },
+  cooldown: { label: 'Cooldown', icon: Clock },
+  rejected_blur: { label: 'Motion blurred', icon: AlertCircle },
+  rejected_posed: { label: 'Camera-facing / Posed', icon: XCircle },
+  rejected_confidence: { label: 'Below confidence cutoff', icon: AlertCircle },
+  error: { label: 'Inference warning', icon: XCircle },
 }
 
 export default function CameraView({ user, onMomentCaptured, onSwitchToGallery, onOpenAuth }) {
@@ -112,7 +104,7 @@ export default function CameraView({ user, onMomentCaptured, onSwitchToGallery, 
   const captureFrame = useCallback(async (isManualSnap = false) => {
     if (!videoRef.current || isAnalyzing) return
 
-    // Cooldown check for passive mode: avoid capturing the exact same pose rapidly
+    // Cooldown check for passive mode
     if (!isManualSnap && mode === 'passive') {
       const elapsed = Date.now() - lastCaptureTimeRef.current
       if (elapsed < 20000) {
@@ -128,7 +120,6 @@ export default function CameraView({ user, onMomentCaptured, onSwitchToGallery, 
     const canvas = canvasRef.current
     if (!canvas || video.readyState < 2) return
 
-    // Downscale frame to max 640px to keep payload under 30KB for fast cloud transfer
     const MAX_DIM = 640
     let w = video.videoWidth || 640
     let h = video.videoHeight || 480
@@ -288,178 +279,172 @@ export default function CameraView({ user, onMomentCaptured, onSwitchToGallery, 
   const StatusIcon = statusConfig.icon
 
   return (
-    <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col lg:flex-row bg-black text-white overflow-hidden">
-      {/* ── Full Stage Viewfinder (Left / Dominant) ──────────── */}
-      <div className="relative flex-1 h-full min-h-[460px] bg-black flex items-center justify-center overflow-hidden border-b lg:border-b-0 lg:border-r border-white/10">
+    <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col lg:flex-row bg-black text-white">
+      {/* ── Main Viewfinder Stage ──────────────────────────── */}
+      <div className="relative flex-1 min-h-[460px] lg:min-h-[640px] bg-black flex items-center justify-center overflow-hidden border-b lg:border-b-0 lg:border-r border-white/10 p-6 lg:p-10">
         {/* Flash Effect */}
         {showFlash && (
           <div className="absolute inset-0 bg-white camera-flash pointer-events-none z-40" />
         )}
 
-        {/* Video Canvas Element */}
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover transform -scale-x-100"
-        />
-        <canvas ref={canvasRef} className="hidden" />
+        {/* Video Canvas Container */}
+        <div className="relative w-full h-full max-w-[1200px] aspect-video bg-[#0a0a0a] rounded-2xl overflow-hidden border border-white/10 flex items-center justify-center">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover transform -scale-x-100"
+          />
+          <canvas ref={canvasRef} className="hidden" />
 
-        {/* Minimalist Optical Reticle Overlay */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-8 md:p-14">
-          <div className="relative w-full h-full border border-white/[0.08] rounded-xl flex items-center justify-center">
-            {/* Corner Bracket Accents */}
-            <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-white/40" />
-            <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-white/40" />
-            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-white/40" />
-            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-white/40" />
+          {/* Minimal Corner Optic Brackets */}
+          <div className="absolute inset-8 pointer-events-none rounded-xl border border-white/[0.06] flex items-center justify-center">
+            <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-white/30" />
+            <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-white/30" />
+            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-white/30" />
+            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-white/30" />
 
-            {/* Center Focus Reticle */}
+            {/* Center Reticle */}
             <div className="relative flex items-center justify-center">
-              <div className={`w-20 h-20 rounded-full border border-white/20 transition-all duration-300 ${
-                isRunning ? 'reticle-scan border-white/40' : ''
+              <div className={`w-16 h-16 rounded-full border border-white/20 transition-all ${
+                isRunning ? 'scale-110 border-white/40' : ''
               }`} />
               <div className="absolute w-1.5 h-1.5 rounded-full bg-white/60" />
             </div>
           </div>
-        </div>
 
-        {/* Top HUD Telemetry Bar */}
-        <div className="absolute top-6 left-6 right-6 z-20 flex items-center justify-between pointer-events-none">
-          {/* Status Capsule */}
-          <div className="pointer-events-auto flex items-center gap-2.5 px-3 py-1.5 rounded-md bg-black/80 backdrop-blur-md border border-white/15">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                isRunning ? 'bg-white shadow-[0_0_8px_#ffffff]' : 'bg-white/30'
-              }`}
-            />
-            <span className="text-[11px] font-mono tracking-wider text-white/90 uppercase flex items-center gap-1.5">
-              <StatusIcon size={12} className={status === 'analyzing' ? 'animate-spin' : ''} />
-              {status === 'cooldown' ? `COOLDOWN (${cooldownSec}S)` : statusConfig.label}
-            </span>
-          </div>
-
-          {/* Vault Security Capsule */}
-          <div className="flex items-center gap-2">
-            {!user ? (
-              <button
-                onClick={onOpenAuth}
-                className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white text-black text-[11px] font-mono font-medium hover:bg-white/90 transition-all uppercase"
-              >
-                <Shield size={11} />
-                <span>SIGN IN TO SECURE</span>
-              </button>
-            ) : (
-              <div className="pointer-events-auto hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/80 backdrop-blur-md border border-white/15 text-[11px] font-mono text-white/70 uppercase">
-                <Shield size={11} className="text-white" />
-                <span>VAULT: {user.name || user.email.split('@')[0]}</span>
-              </div>
-            )}
-
-            {/* Captured Photos Counter */}
-            <div className="pointer-events-auto flex items-center gap-2.5 px-3 py-1.5 rounded-md bg-black/80 backdrop-blur-md border border-white/15">
-              <span className="text-[11px] font-mono tracking-wider text-white/40 uppercase">
-                CAPTURED:
-              </span>
-              <span className="text-[12px] font-mono font-bold text-white">
-                {captureCount}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Captured Moment Notification Toast */}
-        {lastResult && lastResult.moment && (
-          <div className="absolute bottom-28 left-6 right-6 z-20 flex justify-center pointer-events-none">
-            <div className="pointer-events-auto w-full max-w-lg p-3.5 rounded-xl bg-black/95 backdrop-blur-xl border border-white/25 shadow-2xl flex items-center gap-3.5 animate-fadeIn">
-              <img
-                src={resolveImageUrl(lastResult.moment.cloudinary_url || lastResult.moment.filepath)}
-                alt="Captured moment preview"
-                className="w-14 h-14 rounded-lg object-cover border border-white/20 shrink-0 grayscale hover:grayscale-0 transition-all"
+          {/* Top HUD Bar */}
+          <div className="absolute top-5 left-5 right-5 z-20 flex items-center justify-between pointer-events-none">
+            {/* Status Capsule */}
+            <div className="pointer-events-auto flex items-center gap-2.5 px-3 py-1.5 rounded-md bg-black/85 backdrop-blur-md border border-white/15">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isRunning ? 'bg-white' : 'bg-white/30'
+                }`}
               />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 border border-white/20 text-white font-medium uppercase">
-                    {lastResult.moment.classification.replace('_', ' ')}
-                  </span>
-                  <span className="text-[10px] font-mono text-white/40">
-                    {(lastResult.moment.confidence * 100).toFixed(0)}% CONF
-                  </span>
-                </div>
-                <p className="text-xs text-white/90 line-clamp-1 italic">
-                  "{lastResult.moment.caption}"
-                </p>
-              </div>
-              {onSwitchToGallery && (
+              <span className="text-xs text-white/90 flex items-center gap-1.5">
+                <StatusIcon size={13} className={status === 'analyzing' ? 'animate-spin' : ''} />
+                <span>{status === 'cooldown' ? `Cooldown (${cooldownSec}s)` : statusConfig.label}</span>
+              </span>
+            </div>
+
+            {/* Right Telemetry Capsule */}
+            <div className="flex items-center gap-2 pointer-events-auto">
+              {!user ? (
                 <button
-                  onClick={onSwitchToGallery}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-medium bg-white text-black hover:bg-white/90 transition-all shrink-0"
+                  onClick={onOpenAuth}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white text-black text-xs font-medium hover:bg-white/90 transition-all"
                 >
-                  <span>VAULT</span>
-                  <ArrowRight size={11} />
+                  <Shield size={12} />
+                  <span>Sign in to secure</span>
                 </button>
+              ) : (
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/85 backdrop-blur-md border border-white/15 text-xs text-white/70">
+                  <Shield size={12} className="text-white" />
+                  <span>Vault: {user.name || user.email.split('@')[0]}</span>
+                </div>
               )}
+
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-black/85 backdrop-blur-md border border-white/15 text-xs">
+                <span className="text-white/40">Captured:</span>
+                <span className="text-white font-medium">{captureCount}</span>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Bottom Shutter Controls Dock */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
+          {/* Captured Moment Notification Toast */}
+          {lastResult && lastResult.moment && (
+            <div className="absolute bottom-24 left-6 right-6 z-20 flex justify-center pointer-events-none">
+              <div className="pointer-events-auto w-full max-w-md p-4 rounded-xl bg-[#0c0c0c]/95 backdrop-blur-md border border-white/20 shadow-2xl flex items-center gap-3.5 animate-fadeIn">
+                <img
+                  src={resolveImageUrl(lastResult.moment.cloudinary_url || lastResult.moment.filepath)}
+                  alt="Captured moment preview"
+                  className="w-14 h-14 rounded-lg object-cover border border-white/15 shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs px-2 py-0.5 rounded bg-white/10 text-white font-medium">
+                      {lastResult.moment.classification.replace('_', ' ')}
+                    </span>
+                    <span className="text-xs text-white/40">
+                      {(lastResult.moment.confidence * 100).toFixed(0)}% conf
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/90 line-clamp-1 italic">
+                    "{lastResult.moment.caption}"
+                  </p>
+                </div>
+                {onSwitchToGallery && (
+                  <button
+                    onClick={onSwitchToGallery}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium bg-white text-black hover:bg-white/90 transition-all shrink-0"
+                  >
+                    <span>Vault</span>
+                    <ArrowRight size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
-          {/* Upload Button */}
-          <button
-            id="upload-button"
-            onClick={() => fileInputRef.current?.click()}
-            title="Upload photo from disk for AI analysis"
-            className="w-11 h-11 rounded-full bg-black/80 backdrop-blur-md border border-white/20 text-white/70 hover:text-white hover:border-white/60 flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-          >
-            <Upload size={16} />
-          </button>
+          {/* Bottom Shutter Controls Dock */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
 
-          {/* Stark Monochrome Shutter Button */}
-          <button
-            id="capture-button"
-            onClick={toggleRunning}
-            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 border hover:scale-105 active:scale-95 ${
-              isRunning
-                ? 'bg-black border-white text-white'
-                : 'bg-white border-white text-black hover:bg-white/90'
-            }`}
-          >
-            {mode === 'manual' ? (
-              <Camera size={22} />
-            ) : isRunning ? (
-              <Pause size={20} />
-            ) : (
-              <Play size={20} className="ml-0.5" />
-            )}
-          </button>
+            {/* Upload Button */}
+            <button
+              id="upload-button"
+              onClick={() => fileInputRef.current?.click()}
+              title="Upload photo from disk for AI analysis"
+              className="w-11 h-11 rounded-full bg-black/80 backdrop-blur-md border border-white/20 text-white/70 hover:text-white hover:border-white/50 flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+            >
+              <Upload size={16} />
+            </button>
+
+            {/* Shutter Button */}
+            <button
+              id="capture-button"
+              onClick={toggleRunning}
+              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 border hover:scale-105 active:scale-95 ${
+                isRunning
+                  ? 'bg-black border-white text-white'
+                  : 'bg-white border-white text-black hover:bg-white/90'
+              }`}
+            >
+              {mode === 'manual' ? (
+                <Camera size={20} />
+              ) : isRunning ? (
+                <Pause size={18} />
+              ) : (
+                <Play size={18} className="ml-0.5" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── Minimalist Hardware Dock (Right Panel) ───────────── */}
-      <div className="w-full lg:w-[380px] h-auto lg:h-full bg-black flex flex-col justify-between p-6 overflow-y-auto">
-        <div className="space-y-6">
+      {/* ── Right Controls Drawer with Generous Spacing ──────── */}
+      <div className="w-full lg:w-[380px] bg-black p-8 flex flex-col justify-between overflow-y-auto">
+        <div className="flex flex-col gap-8">
           {/* Mode Selector */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[11px] font-mono uppercase tracking-widest text-white/40">
-                CAPTURE MODE
+            <div className="flex items-center justify-between mb-3.5">
+              <span className="text-xs font-medium uppercase tracking-wider text-white/50">
+                Capture mode
               </span>
-              <span className="text-[10px] font-mono text-white/70 px-1.5 py-0.5 rounded border border-white/15">
-                {mode.toUpperCase()}
+              <span className="text-xs text-white/70 px-2 py-0.5 rounded border border-white/15">
+                {mode}
               </span>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="flex flex-col gap-2.5">
               {MODES.map(({ id, label, desc, icon: Icon }) => {
                 const isSelected = mode === id
                 return (
@@ -470,18 +455,18 @@ export default function CameraView({ user, onMomentCaptured, onSwitchToGallery, 
                       setMode(id)
                       if (isRunning && id === 'manual') stopAutoCapture()
                     }}
-                    className={`w-full p-3 rounded-lg text-left flex items-start gap-3 transition-all border ${
+                    className={`w-full p-4 rounded-xl text-left flex items-start gap-3.5 transition-all border ${
                       isSelected
                         ? 'bg-white text-black border-white'
-                        : 'bg-white/[0.02] text-white border-white/[0.08] hover:border-white/20 hover:bg-white/[0.04]'
+                        : 'bg-white/[0.02] text-white border-white/10 hover:border-white/20 hover:bg-white/[0.04]'
                     }`}
                   >
-                    <Icon size={16} className={`mt-0.5 ${isSelected ? 'text-black' : 'text-white/60'}`} />
+                    <Icon size={16} className={`mt-0.5 shrink-0 ${isSelected ? 'text-black' : 'text-white/60'}`} />
                     <div>
-                      <h5 className={`text-[13px] font-medium leading-none ${isSelected ? 'text-black font-semibold' : 'text-white'}`}>
+                      <h5 className={`text-sm font-medium ${isSelected ? 'text-black font-semibold' : 'text-white'}`}>
                         {label}
                       </h5>
-                      <p className={`text-[11px] mt-1 leading-snug ${isSelected ? 'text-black/60' : 'text-white/40'}`}>
+                      <p className={`text-xs mt-1 leading-relaxed ${isSelected ? 'text-black/70' : 'text-white/45'}`}>
                         {desc}
                       </p>
                     </div>
@@ -491,21 +476,21 @@ export default function CameraView({ user, onMomentCaptured, onSwitchToGallery, 
             </div>
           </div>
 
-          {/* Heuristic Parameter Sliders */}
-          <div className="pt-4 border-t border-white/[0.08]">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[11px] font-mono uppercase tracking-widest text-white/40">
-                SENSITIVITY THRESHOLDS
+          {/* Sensitivity Controls */}
+          <div className="pt-6 border-t border-white/10">
+            <div className="flex items-center justify-between mb-5">
+              <span className="text-xs font-medium uppercase tracking-wider text-white/50">
+                Sensitivity controls
               </span>
-              <Sliders size={12} className="text-white/40" />
+              <Sliders size={13} className="text-white/40" />
             </div>
 
-            <div className="space-y-4">
+            <div className="flex flex-col gap-5">
               {/* Interval Slider */}
-              <div>
-                <div className="flex justify-between items-center text-[12px] mb-1.5">
-                  <span className="text-white/70">Sampling Rate</span>
-                  <span className="font-mono text-white text-[11px]">{frameInterval.toFixed(1)}s</span>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/70">Sampling interval</span>
+                  <span className="text-white font-medium">{frameInterval.toFixed(1)}s</span>
                 </div>
                 <input
                   id="slider-interval"
@@ -519,10 +504,10 @@ export default function CameraView({ user, onMomentCaptured, onSwitchToGallery, 
               </div>
 
               {/* Confidence Slider */}
-              <div>
-                <div className="flex justify-between items-center text-[12px] mb-1.5">
-                  <span className="text-white/70">Confidence Cutoff</span>
-                  <span className="font-mono text-white text-[11px]">{(confidenceThreshold * 100).toFixed(0)}%</span>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/70">Confidence cutoff</span>
+                  <span className="text-white font-medium">{(confidenceThreshold * 100).toFixed(0)}%</span>
                 </div>
                 <input
                   id="slider-confidence"
@@ -536,10 +521,10 @@ export default function CameraView({ user, onMomentCaptured, onSwitchToGallery, 
               </div>
 
               {/* Blur Slider */}
-              <div>
-                <div className="flex justify-between items-center text-[12px] mb-1.5">
-                  <span className="text-white/70">Sharpness Cutoff</span>
-                  <span className="font-mono text-white text-[11px]">{blurThreshold}</span>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/70">Sharpness cutoff</span>
+                  <span className="text-white font-medium">{blurThreshold}</span>
                 </div>
                 <input
                   id="slider-blur"
@@ -554,38 +539,38 @@ export default function CameraView({ user, onMomentCaptured, onSwitchToGallery, 
             </div>
           </div>
 
-          {/* Last Frame Live Metrics */}
+          {/* Live Telemetry */}
           {lastResult?.filter_result && (
-            <div className="pt-4 border-t border-white/[0.08] animate-fadeIn">
-              <span className="text-[11px] font-mono uppercase tracking-widest text-white/40 block mb-2.5">
-                TELEMETRY FEED
+            <div className="pt-6 border-t border-white/10 animate-fadeIn">
+              <span className="text-xs font-medium uppercase tracking-wider text-white/50 block mb-3">
+                Telemetry feed
               </span>
 
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.08]">
-                  <span className="text-[10px] font-mono text-white/40 block mb-0.5">SHARPNESS</span>
-                  <span className="font-mono text-xs font-semibold text-white">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="p-3 rounded-lg bg-white/[0.03] border border-white/10">
+                  <span className="text-xs text-white/45 block mb-1">Sharpness</span>
+                  <span className="text-sm font-medium text-white">
                     {lastResult.filter_result.blur_score?.toFixed(1) || '—'}
                   </span>
                 </div>
 
-                <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.08]">
-                  <span className="text-[10px] font-mono text-white/40 block mb-0.5">FACES</span>
-                  <span className="font-mono text-xs font-semibold text-white">
+                <div className="p-3 rounded-lg bg-white/[0.03] border border-white/10">
+                  <span className="text-xs text-white/45 block mb-1">Faces</span>
+                  <span className="text-sm font-medium text-white">
                     {lastResult.filter_result.faces_detected ?? '0'}
                   </span>
                 </div>
 
-                <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.08]">
-                  <span className="text-[10px] font-mono text-white/40 block mb-0.5">CANDID</span>
-                  <span className="font-mono text-xs font-semibold text-white">
+                <div className="p-3 rounded-lg bg-white/[0.03] border border-white/10">
+                  <span className="text-xs text-white/45 block mb-1">Candid</span>
+                  <span className="text-sm font-medium text-white">
                     {lastResult.filter_result.candid_score?.toFixed(2) || '—'}
                   </span>
                 </div>
               </div>
 
               {lastResult.message && (
-                <p className="text-[11px] font-mono text-white/50 mt-2.5">
+                <p className="text-xs text-white/50 mt-3 leading-relaxed">
                   {lastResult.message}
                 </p>
               )}
@@ -593,10 +578,10 @@ export default function CameraView({ user, onMomentCaptured, onSwitchToGallery, 
           )}
         </div>
 
-        {/* Minimal Footer Info */}
-        <div className="pt-4 border-t border-white/[0.08] text-[11px] font-mono text-white/30 flex justify-between items-center">
-          <span>CANCHALANT V2</span>
-          <span>EDGE SENTINEL</span>
+        {/* Minimal Footer */}
+        <div className="pt-6 border-t border-white/10 text-xs text-white/35 flex justify-between items-center">
+          <span>Canchalant Studio</span>
+          <span>Edge Sentinel</span>
         </div>
       </div>
     </div>

@@ -1,204 +1,96 @@
 @import "tailwindcss";
 
-/* ── Canchalant Minimal Design System ──────────────────────────── */
-:root {
-  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'Geist Mono', 'SF Mono', 'Fira Code', monospace;
-
-  /* Pure Black & White Palette */
-  --bg-primary: #000000;
-  --bg-secondary: #0a0a0a;
-  --bg-tertiary: #111111;
-  --bg-card: rgba(17, 17, 17, 0.8);
-  --bg-card-hover: rgba(24, 24, 24, 0.95);
-  --bg-surface: rgba(255, 255, 255, 0.04);
-
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-medium: rgba(255, 255, 255, 0.15);
-  --border-strong: rgba(255, 255, 255, 0.25);
-
-  --text-primary: #ffffff;
-  --text-secondary: #a1a1a1;
-  --text-muted: #666666;
-  --text-dim: #444444;
+@theme {
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* ── Base Styles ───────────────────────────────────────────────── */
+/* ── Taufeeq-inspired Minimalist Design System ─────────────────── */
+:root {
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --bg-page: #000000;
+  --bg-surface: #0a0a0a;
+  --bg-elevated: #111111;
+  --border-line: rgba(255, 255, 255, 0.1);
+  --border-active: rgba(255, 255, 255, 0.3);
+  --text-main: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.55);
+  --text-dim: rgba(255, 255, 255, 0.35);
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html {
-  font-size: 16px;
+  font-family: var(--font-sans);
+  background-color: var(--bg-page);
+  color: var(--text-main);
   scroll-behavior: smooth;
   color-scheme: dark;
-}
-
-body {
-  font-family: var(--font-sans);
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  min-height: 100vh;
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Scrollbar ─────────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  line-height: 1.5;
 }
 
-/* ── Surface & Card Utilities ──────────────────────────────────── */
-.glass-panel {
-  background: rgba(10, 10, 10, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-subtle);
+/* ── Standard Form Control Defaults ────────────────────────────── */
+input, button, select, textarea {
+  font-family: inherit;
 }
 
-.glass-panel-elevated {
-  background: rgba(17, 17, 17, 0.95);
-  backdrop-filter: blur(32px);
-  -webkit-backdrop-filter: blur(32px);
-  border: 1px solid var(--border-medium);
-}
-
-.canchalant-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  transition: all 0.2s ease;
-}
-
-.canchalant-card:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-medium);
-}
-
-/* ── Badge System ──────────────────────────────────────────────── */
-.chip-base {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.6rem;
-  border-radius: 4px;
-  font-size: 0.68rem;
-  font-weight: 500;
-  font-family: var(--font-mono);
-  letter-spacing: 0.02em;
-}
-
-.badge-specific-candid {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  display: block;
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  font-size: 14px;
+  line-height: 44px;
   color: #ffffff;
-}
-
-.badge-general-candid {
-  background: rgba(255, 255, 255, 0.06);
+  background-color: #0c0c0c;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #cccccc;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  box-sizing: border-box;
 }
 
-.badge-posed {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #999999;
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
+  border-color: rgba(255, 255, 255, 0.4);
+  background-color: #111111;
 }
 
-.badge-junk {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  color: #666666;
-}
-
-.mood-tag-pill {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #aaaaaa;
-  border-radius: 4px;
-  padding: 0.15rem 0.5rem;
-  font-size: 0.68rem;
-  font-family: var(--font-mono);
-  font-weight: 400;
-  transition: all 0.15s ease;
-}
-
-.mood-tag-pill:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-}
-
-/* ── Animations ────────────────────────────────────────────────── */
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.05); }
-}
-
-.pulse-glow {
-  animation: pulseGlow 2s infinite ease-in-out;
-}
-
-@keyframes reticleScan {
-  0% { transform: scale(0.95); opacity: 0.3; }
-  50% { transform: scale(1.03); opacity: 0.7; }
-  100% { transform: scale(0.95); opacity: 0.3; }
-}
-
-.reticle-scan {
-  animation: reticleScan 2s infinite ease-in-out;
-}
-
-@keyframes cameraFlash {
-  0% { opacity: 0; }
-  15% { opacity: 0.6; }
-  100% { opacity: 0; }
-}
-
-.camera-flash {
-  animation: cameraFlash 0.35s ease-out forwards;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out forwards;
-}
-
-/* ── Range Slider ──────────────────────────────────────────────── */
+/* ── Minimal Range Slider ──────────────────────────────────────── */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
+  display: block;
   width: 100%;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 1px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
   outline: none;
+  margin: 8px 0;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #ffffff;
   cursor: pointer;
@@ -206,11 +98,41 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
+  transform: scale(1.15);
 }
 
-/* ── Selection ─────────────────────────────────────────────────── */
-::selection {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+/* ── Subtle Animations ─────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cameraFlash {
+  0% { opacity: 0; }
+  15% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+.camera-flash {
+  animation: cameraFlash 0.35s ease-out forwards;
+}
+
+/* ── Scrollbars ────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
