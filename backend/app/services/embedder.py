@@ -28,6 +28,13 @@ from backend.app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+# Restrict PyTorch thread pool overhead on cloud instances
+try:
+    torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
+except Exception:
+    pass
+
 # ── Singleton Embedder ────────────────────────────────────────────
 
 _model: SentenceTransformer | None = None
@@ -107,10 +114,18 @@ def get_embedding_dimension() -> int:
 
 
 def check_health() -> dict:
-    """Return embedder health status."""
+    """Return embedder health status without triggering model download on health check."""
+    global _model, _device
+    _device = _get_device()
+    if _model is None:
+        return {
+            "status": "ready (loads on demand)",
+            "device": _device,
+            "dimension": 512,
+            "model": "clip-ViT-B-32",
+        }
     try:
-        model = get_model()
-        dim = getattr(model, "get_sentence_embedding_dimension", lambda: 512)() or 512
+        dim = getattr(_model, "get_sentence_embedding_dimension", lambda: 512)() or 512
         return {
             "status": "healthy",
             "device": _device,
@@ -118,4 +133,4 @@ def check_health() -> dict:
             "model": "clip-ViT-B-32",
         }
     except Exception as e:
-        return {"status": f"error: {e}", "device": "unknown"}
+        return {"status": f"error: {e}", "device": _device}

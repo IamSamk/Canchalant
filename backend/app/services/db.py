@@ -89,8 +89,8 @@ async def get_database() -> AsyncIOMotorDatabase:
             _client = AsyncIOMotorClient(
                 settings.mongodb_uri,
                 tlsCAFile=certifi.where(),
-                maxPoolSize=20,
-                minPoolSize=1,
+                maxPoolSize=5,
+                minPoolSize=0,
                 serverSelectionTimeoutMS=4000,
                 connectTimeoutMS=4000,
             )
