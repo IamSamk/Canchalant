@@ -53,8 +53,9 @@ def _detect_faces_and_gaze(
     gray: np.ndarray,
 ) -> Tuple[int, int]:
     """
-    Detect faces and estimate how many are directly looking at the camera
-    (eyes visible within each face region).
+    Detect faces and estimate how many are directly looking at the camera.
+    Since _FACE_CASCADE is a frontal face detector, any centered face
+    is by nature facing the camera.
 
     Returns:
         (total_faces, faces_looking_at_camera)
@@ -73,18 +74,30 @@ def _detect_faces_and_gaze(
     if len(faces) == 0:
         return 0, 0
 
+    frame_h, frame_w = gray.shape[:2]
     looking = 0
-    if _EYE_CASCADE and not _EYE_CASCADE.empty():
-        for (x, y, w, h) in faces:
-            roi_gray = gray[y : y + h, x : x + w]
+
+    for (x, y, w, h) in faces:
+        roi_gray = gray[y : y + h, x : x + w]
+        eyes_found = 0
+        if _EYE_CASCADE and not _EYE_CASCADE.empty():
             try:
                 eyes = _EYE_CASCADE.detectMultiScale(
-                    roi_gray, scaleFactor=1.1, minNeighbors=4, minSize=(20, 20)
+                    roi_gray, scaleFactor=1.1, minNeighbors=3, minSize=(16, 16)
                 )
-                if len(eyes) >= 2:
-                    looking += 1
+                eyes_found = len(eyes)
             except Exception:
-                pass
+                eyes_found = 0
+
+        # If eyes are detected, they are looking directly at camera
+        if eyes_found >= 1:
+            looking += 1
+        else:
+            # Frontal detector already implies front-facing orientation.
+            # If face is centered in frame (standard webcam presence), treat as camera-facing.
+            center_x = x + w / 2
+            if (0.25 * frame_w) <= center_x <= (0.75 * frame_w) and w > (0.12 * frame_w):
+                looking += 1
 
     return len(faces), looking
 
@@ -94,23 +107,23 @@ def _compute_candid_score(
 ) -> float:
     """
     Heuristic candidness score [0.0, 1.0]:
-    - No faces:              0.3  (ambient shot, could be scenery)
-    - Faces but none looking: 1.0  (genuine candid)
-    - Some looking:          scaled down proportionally
-    - All looking:           0.1  (likely posed)
+    - No faces:              0.2  (empty scene, not a candid people moment)
+    - Faces but none looking: 0.95 (genuine unposed candid)
+    - Single face looking:   0.10 (direct camera stare / selfie pose)
+    - Multiple, all looking: 0.15 (group pose)
+    - Multiple, mixed:       proportional
     """
     if faces_detected == 0:
-        return 0.3
+        return 0.2
 
     ratio_looking = looking_at_camera / faces_detected
 
-    if ratio_looking == 0.0:
-        return 1.0
-    elif ratio_looking >= 1.0:
-        return 0.1
+    if ratio_looking >= 0.9:
+        return 0.10
+    elif ratio_looking == 0.0:
+        return 0.95
     else:
-        # Linear interpolation: fewer looking → more candid
-        return round(1.0 - (ratio_looking * 0.8), 2)
+        return round(max(0.1, 0.95 - (ratio_looking * 0.8)), 2)
 
 
 def analyze_frame(

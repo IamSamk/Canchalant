@@ -6,7 +6,8 @@ served via Hugging Face Serverless Inference API (`google/paligemma-3b-pt-224`).
 Uses `HF_TOKEN` from environment for Bearer authentication.
 
 Parses structured JSON responses for classification, confidence, caption,
-and mood_tags, with graceful fallbacks.
+and mood_tags, with graceful fallbacks. No local model loading — all
+inference happens via the HF cloud API.
 """
 
 from __future__ import annotations
@@ -18,6 +19,8 @@ import logging
 import re
 from typing import Any, Dict, List, Optional
 
+import cv2
+import numpy as np
 import requests
 
 from backend.app.core.config import get_settings
@@ -64,12 +67,10 @@ def _extract_json(text: str) -> Optional[Dict[str, Any]]:
 
 def _heuristic_fallback(image_bytes: bytes, reason: str = "") -> VLMResult:
     """
-    Intelligent heuristic fallback when Hugging Face API is loading,
+    Lightweight heuristic fallback when Hugging Face API is loading,
     rate-limited, or token lacks provider permissions.
+    Uses only OpenCV (already required for filter.py) — no torch needed.
     """
-    import cv2
-    import numpy as np
-
     arr = np.frombuffer(image_bytes, dtype=np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
 
@@ -84,12 +85,15 @@ def _heuristic_fallback(image_bytes: bytes, reason: str = "") -> VLMResult:
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur_score = float(cv2.Laplacian(gray, cv2.CV_64F).var())
 
-    # Detect faces
-    face_cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
-    faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-    face_count = len(faces)
+    # Detect faces using Haar cascades (already loaded by filter.py)
+    try:
+        face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        )
+        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+        face_count = len(faces)
+    except Exception:
+        face_count = 0
 
     if blur_score < 40:
         return VLMResult(
@@ -107,18 +111,19 @@ def _heuristic_fallback(image_bytes: bytes, reason: str = "") -> VLMResult:
             mood_tags=["togetherness", "warmth", "authentic", "connection"],
         )
     elif face_count == 1:
+        # Frontal cascade detected a direct-facing subject — classify as posed webcam stare
         return VLMResult(
-            classification=Classification.GENERAL_CANDID,
-            confidence=0.78,
-            caption="A quiet, natural candid scene immersed in daily rhythm.",
-            mood_tags=["ambient", "peaceful", "unposed", "candid"],
+            classification=Classification.POSED,
+            confidence=0.85,
+            caption="Direct camera-facing subject detected (posed / webcam focus).",
+            mood_tags=["portrait", "posed", "direct-gaze", "focused"],
         )
     else:
         return VLMResult(
-            classification=Classification.GENERAL_CANDID,
-            confidence=0.72,
-            caption="An ambient memory filled with atmosphere and genuine everyday comfort.",
-            mood_tags=["ambient", "scenic", "quiet-moments"],
+            classification=Classification.JUNK,
+            confidence=0.35,
+            caption="Ambient background frame with no active human subject detected.",
+            mood_tags=["ambient", "room", "scenic"],
         )
 
 
@@ -200,7 +205,7 @@ def _sync_call_huggingface_api(image_bytes: bytes) -> Optional[VLMResult]:
 
                 elif response.status_code in (401, 403):
                     logger.warning(
-                        "HF API auth warning (%d): %s (Inference permission required on token)",
+                        "HF API auth warning (%d): %s",
                         response.status_code, response.text[:120],
                     )
                     break

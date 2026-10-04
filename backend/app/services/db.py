@@ -4,7 +4,7 @@ Canchalant — MongoDB Atlas & Vector Search Layer
 Asynchronous database integration using Motor (AsyncIOMotorClient) targeting:
 - Database: `canchalant`
 - Collection: `moments`
-- Atlas Vector Search: `$vectorSearch` aggregation stage on 512-dim CLIP vectors
+- Atlas Vector Search: `$vectorSearch` aggregation stage on dense vector embeddings
 - Cloudinary media URL persistence
 
 Includes a local persistent replica for resilient operation if MongoDB Atlas
