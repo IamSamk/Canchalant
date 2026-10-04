@@ -19,6 +19,7 @@ env/
 
 # Captured photos (private)
 captured_photos/
+backend/data/
 
 # Node / Frontend
 node_modules/
