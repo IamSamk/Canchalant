@@ -18,13 +18,21 @@ from backend.app.models.schemas import FilterResult
 
 logger = logging.getLogger(__name__)
 
-# OpenCV Haar cascades shipped with opencv-python
-_FACE_CASCADE = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-)
-_EYE_CASCADE = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_eye.xml"
-)
+# OpenCV Haar cascades shipped with opencv-python (safely initialized)
+_FACE_CASCADE = None
+_EYE_CASCADE = None
+
+try:
+    if hasattr(cv2, "CascadeClassifier") and hasattr(cv2, "data") and hasattr(cv2.data, "haarcascades"):
+        face_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        eye_path = cv2.data.haarcascades + "haarcascade_eye.xml"
+        _FACE_CASCADE = cv2.CascadeClassifier(face_path)
+        _EYE_CASCADE = cv2.CascadeClassifier(eye_path)
+        logger.info("OpenCV Haar cascades initialized successfully.")
+    else:
+        logger.warning("OpenCV CascadeClassifier or haarcascades data not available; face heuristics disabled.")
+except Exception as _e:
+    logger.warning("Could not initialize Haar cascades (%s); falling back to blur-only filtering.", _e)
 
 
 def _decode_image(image_bytes: bytes) -> np.ndarray:
@@ -51,23 +59,32 @@ def _detect_faces_and_gaze(
     Returns:
         (total_faces, faces_looking_at_camera)
     """
-    faces = _FACE_CASCADE.detectMultiScale(
-        gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60)
-    )
+    if _FACE_CASCADE is None or _FACE_CASCADE.empty():
+        return 0, 0
+
+    try:
+        faces = _FACE_CASCADE.detectMultiScale(
+            gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60)
+        )
+    except Exception as e:
+        logger.debug("Face detection error: %s", e)
+        return 0, 0
 
     if len(faces) == 0:
         return 0, 0
 
     looking = 0
-    for (x, y, w, h) in faces:
-        roi_gray = gray[y : y + h, x : x + w]
-        eyes = _EYE_CASCADE.detectMultiScale(
-            roi_gray, scaleFactor=1.1, minNeighbors=4, minSize=(20, 20)
-        )
-        # If both eyes are clearly detected, the person is likely
-        # facing the camera directly (potential posed shot)
-        if len(eyes) >= 2:
-            looking += 1
+    if _EYE_CASCADE and not _EYE_CASCADE.empty():
+        for (x, y, w, h) in faces:
+            roi_gray = gray[y : y + h, x : x + w]
+            try:
+                eyes = _EYE_CASCADE.detectMultiScale(
+                    roi_gray, scaleFactor=1.1, minNeighbors=4, minSize=(20, 20)
+                )
+                if len(eyes) >= 2:
+                    looking += 1
+            except Exception:
+                pass
 
     return len(faces), looking
 
