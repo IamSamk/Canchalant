@@ -85,15 +85,23 @@ async def get_database() -> AsyncIOMotorDatabase:
             settings.mongodb_db_name,
             settings.mongodb_collection,
         )
+        clean_uri = settings.clean_mongodb_uri
         try:
-            _client = AsyncIOMotorClient(
-                settings.mongodb_uri,
-                tlsCAFile=certifi.where(),
-                maxPoolSize=5,
-                minPoolSize=0,
-                serverSelectionTimeoutMS=4000,
-                connectTimeoutMS=4000,
-            )
+            try:
+                ca_file = certifi.where()
+            except Exception:
+                ca_file = None
+
+            client_kwargs = {
+                "maxPoolSize": 5,
+                "minPoolSize": 0,
+                "serverSelectionTimeoutMS": 5000,
+                "connectTimeoutMS": 5000,
+            }
+            if ca_file:
+                client_kwargs["tlsCAFile"] = ca_file
+
+            _client = AsyncIOMotorClient(clean_uri, **client_kwargs)
             _db = _client[settings.mongodb_db_name]
             await _client.admin.command("ping")
             _atlas_available = True

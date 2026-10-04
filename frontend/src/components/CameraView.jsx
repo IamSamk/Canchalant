@@ -18,7 +18,8 @@ import {
   ExternalLink,
   Sliders,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Clock,
 } from 'lucide-react'
 import { analyzeFrame, resolveImageUrl } from '../api'
 
@@ -51,6 +52,7 @@ const STATUS_CONFIG = {
   scanning: { color: '#a78bfa', label: 'Sampling Frame...', icon: ScanLine },
   analyzing: { color: '#60a5fa', label: 'AI Classifying...', icon: Loader },
   captured: { color: '#34d399', label: 'Candid Captured!', icon: CheckCircle },
+  cooldown: { color: '#818cf8', label: 'Candid Cooldown', icon: Clock },
   rejected_blur: { color: '#f59e0b', label: 'Motion Blurred', icon: AlertCircle },
   rejected_posed: { color: '#fbbf24', label: 'Posed / Direct Stare', icon: XCircle },
   rejected_confidence: { color: '#f97316', label: 'Below Confidence', icon: AlertCircle },
@@ -62,12 +64,14 @@ export default function CameraView({ onMomentCaptured, onSwitchToGallery }) {
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
   const intervalRef = useRef(null)
+  const lastCaptureTimeRef = useRef(0)
 
   const [stream, setStream] = useState(null)
   const [isRunning, setIsRunning] = useState(false)
   const [mode, setMode] = useState('passive')
   const [showControls, setShowControls] = useState(true)
   const [status, setStatus] = useState('idle')
+  const [cooldownSec, setCooldownSec] = useState(0)
   const [lastResult, setLastResult] = useState(null)
   const [captureCount, setCaptureCount] = useState(0)
   const [showFlash, setShowFlash] = useState(false)
@@ -106,19 +110,45 @@ export default function CameraView({ onMomentCaptured, onSwitchToGallery }) {
   }, [stream])
 
   // Capture frame helper
-  const captureFrame = useCallback(async () => {
+  const captureFrame = useCallback(async (isManualSnap = false) => {
     if (!videoRef.current || isAnalyzing) return
+
+    // Cooldown check for passive mode: avoid capturing the exact same pose every 2 seconds
+    if (!isManualSnap && mode === 'passive') {
+      const elapsed = Date.now() - lastCaptureTimeRef.current
+      if (elapsed < 15000) {
+        const remaining = Math.ceil((15000 - elapsed) / 1000)
+        setCooldownSec(remaining)
+        setStatus('cooldown')
+        return
+      }
+    }
+    setCooldownSec(0)
 
     const video = videoRef.current
     const canvas = canvasRef.current
     if (!canvas || video.readyState < 2) return
 
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(video, 0, 0)
+    // Downscale frame to max 640px to keep payload under 30KB for instantaneous cloud transfer
+    const MAX_DIM = 640
+    let w = video.videoWidth || 640
+    let h = video.videoHeight || 480
+    if (w > MAX_DIM || h > MAX_DIM) {
+      if (w > h) {
+        h = Math.round((h * MAX_DIM) / w)
+        w = MAX_DIM
+      } else {
+        w = Math.round((w * MAX_DIM) / h)
+        h = MAX_DIM
+      }
+    }
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, w, h)
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.72)
     const base64 = dataUrl.split(',')[1]
 
     setIsAnalyzing(true)
@@ -126,7 +156,7 @@ export default function CameraView({ onMomentCaptured, onSwitchToGallery }) {
 
     try {
       const result = await analyzeFrame(base64, {
-        mode,
+        mode: isManualSnap ? 'manual' : mode,
         confidenceThreshold,
         blurThreshold,
       })
@@ -135,6 +165,7 @@ export default function CameraView({ onMomentCaptured, onSwitchToGallery }) {
       setStatus(result.status)
 
       if (result.status === 'captured') {
+        lastCaptureTimeRef.current = Date.now()
         setCaptureCount(c => c + 1)
         if (onMomentCaptured) onMomentCaptured()
         setShowFlash(true)
@@ -149,41 +180,62 @@ export default function CameraView({ onMomentCaptured, onSwitchToGallery }) {
     }
   }, [isAnalyzing, mode, confidenceThreshold, blurThreshold, onMomentCaptured])
 
-  // File upload handler
+  // File upload handler with client-side downscale
   const handleFileUpload = e => {
     const file = e.target.files?.[0]
     if (!file) return
 
     const reader = new FileReader()
     reader.onload = async () => {
-      const dataUrl = reader.result
-      const base64 = dataUrl.split(',')[1]
-
-      setIsAnalyzing(true)
-      setStatus('analyzing')
-
-      try {
-        const result = await analyzeFrame(base64, {
-          mode: 'manual', // Force manual capture for uploaded pictures
-          confidenceThreshold,
-          blurThreshold: Math.min(blurThreshold, 40),
-        })
-
-        setLastResult(result)
-        setStatus(result.status)
-
-        if (result.status === 'captured') {
-          setCaptureCount(c => c + 1)
-          if (onMomentCaptured) onMomentCaptured()
-          setShowFlash(true)
-          setTimeout(() => setShowFlash(false), 450)
+      const img = new window.Image()
+      img.onload = async () => {
+        const canvas = canvasRef.current || document.createElement('canvas')
+        const MAX_DIM = 800
+        let w = img.width
+        let h = img.height
+        if (w > MAX_DIM || h > MAX_DIM) {
+          if (w > h) {
+            h = Math.round((h * MAX_DIM) / w)
+            w = MAX_DIM
+          } else {
+            w = Math.round((w * MAX_DIM) / h)
+            h = MAX_DIM
+          }
         }
-      } catch (err) {
-        setStatus('error')
-        setLastResult({ message: err.message })
-      } finally {
-        setIsAnalyzing(false)
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, w, h)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.78)
+        const base64 = dataUrl.split(',')[1]
+
+        setIsAnalyzing(true)
+        setStatus('analyzing')
+
+        try {
+          const result = await analyzeFrame(base64, {
+            mode: 'manual',
+            confidenceThreshold,
+            blurThreshold: Math.min(blurThreshold, 40),
+          })
+
+          setLastResult(result)
+          setStatus(result.status)
+
+          if (result.status === 'captured') {
+            setCaptureCount(c => c + 1)
+            if (onMomentCaptured) onMomentCaptured()
+            setShowFlash(true)
+            setTimeout(() => setShowFlash(false), 450)
+          }
+        } catch (err) {
+          setStatus('error')
+          setLastResult({ message: err.message })
+        } finally {
+          setIsAnalyzing(false)
+        }
       }
+      img.src = reader.result
     }
     reader.readAsDataURL(file)
   }
@@ -212,7 +264,7 @@ export default function CameraView({ onMomentCaptured, onSwitchToGallery }) {
     if (isRunning) {
       stopAutoCapture()
     } else if (mode === 'manual') {
-      captureFrame()
+      captureFrame(true)
     } else {
       startAutoCapture()
     }
@@ -289,7 +341,7 @@ export default function CameraView({ onMomentCaptured, onSwitchToGallery }) {
               />
               <span className="text-xs font-mono font-semibold" style={{ color: statusConfig.color }}>
                 <StatusIcon size={13} className="inline mr-1.5 -mt-0.5" />
-                {statusConfig.label}
+                {status === 'cooldown' ? `Cooldown (${cooldownSec}s)` : statusConfig.label}
               </span>
             </div>
 

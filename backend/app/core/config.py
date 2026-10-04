@@ -74,6 +74,26 @@ class Settings(BaseSettings):
     device: str = "cuda"
 
     @property
+    def clean_mongodb_uri(self) -> str:
+        """Sanitize URI by stripping surrounding quotes and whitespace."""
+        return self.mongodb_uri.strip("\"' \t\r\n")
+
+    @property
+    def clean_hf_token(self) -> str:
+        """Sanitize HF token."""
+        return self.hf_token.strip("\"' \t\r\n")
+
+    @property
+    def clean_cloudinary_api_key(self) -> str:
+        """Sanitize Cloudinary API key."""
+        return self.cloudinary_api_key.strip("\"' \t\r\n")
+
+    @property
+    def clean_cloudinary_api_secret(self) -> str:
+        """Sanitize Cloudinary API secret."""
+        return self.cloudinary_api_secret.strip("\"' \t\r\n")
+
+    @property
     def storage_path(self) -> Path:
         """Absolute path to the local fallback photo storage directory."""
         p = Path(self.storage_dir)
