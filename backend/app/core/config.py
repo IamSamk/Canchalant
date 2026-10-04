@@ -11,6 +11,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Resolve .env relative to project root
@@ -27,16 +28,28 @@ class Settings(BaseSettings):
     """Centralized configuration for the Canchalant backend."""
 
     model_config = SettingsConfigDict(
-        env_file=str(_ENV_FILE),
+        env_file=str(_ENV_FILE) if _ENV_FILE.exists() else None,
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
     # ── MongoDB Atlas ──────────────────────────────────────────────
-    mongodb_uri: str = "mongodb://localhost:27017"
-    mongodb_db_name: str = "canchalant"
-    mongodb_collection: str = "moments"
-    mongodb_vector_index_name: str = "vector_index"
+    mongodb_uri: str = Field(
+        default="mongodb://localhost:27017",
+        validation_alias=AliasChoices("mongodb_uri", "mongodb_atlas_uri", "MONGODB_URI", "MONGODB_ATLAS_URI"),
+    )
+    mongodb_db_name: str = Field(
+        default="canchalant",
+        validation_alias=AliasChoices("mongodb_db_name", "MONGODB_DB_NAME"),
+    )
+    mongodb_collection: str = Field(
+        default="moments",
+        validation_alias=AliasChoices("mongodb_collection", "mongodb_collection_name", "MONGODB_COLLECTION", "MONGODB_COLLECTION_NAME"),
+    )
+    mongodb_vector_index_name: str = Field(
+        default="vector_index",
+        validation_alias=AliasChoices("mongodb_vector_index_name", "MONGODB_VECTOR_INDEX_NAME"),
+    )
 
     # ── Hugging Face Serverless Vision API ──────────────────────────
     hf_token: str = ""

@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: canchalant-api
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install torch --index-url https://download.pytorch.org/whl/cpu && pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DEVICE
+        value: cpu
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: canchalant
+      - key: MONGODB_COLLECTION
+        value: moments
+      - key: MONGODB_VECTOR_INDEX_NAME
+        value: vector_index
+      - key: HF_TOKEN
+        sync: false
+      - key: HF_VISION_MODEL
+        value: google/paligemma-3b-pt-224
+      - key: CLOUDINARY_CLOUD_NAME
+        value: dgqqmrnjw
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: canchalant_snaps
