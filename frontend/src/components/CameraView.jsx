@@ -22,6 +22,7 @@ import {
   Clock,
   Maximize2,
   RefreshCw,
+  Shield,
 } from 'lucide-react'
 import { analyzeFrame, resolveImageUrl } from '../api'
 
@@ -58,7 +59,7 @@ const STATUS_CONFIG = {
   error: { label: 'INFERENCE ERROR', icon: XCircle },
 }
 
-export default function CameraView({ onMomentCaptured, onSwitchToGallery }) {
+export default function CameraView({ user, onMomentCaptured, onSwitchToGallery, onOpenAuth }) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -339,14 +340,32 @@ export default function CameraView({ onMomentCaptured, onSwitchToGallery }) {
             </span>
           </div>
 
-          {/* Captured Photos Counter */}
-          <div className="pointer-events-auto flex items-center gap-2.5 px-3 py-1.5 rounded-md bg-black/80 backdrop-blur-md border border-white/15">
-            <span className="text-[11px] font-mono tracking-wider text-white/40 uppercase">
-              CAPTURED:
-            </span>
-            <span className="text-[12px] font-mono font-bold text-white">
-              {captureCount}
-            </span>
+          {/* Vault Security Capsule */}
+          <div className="flex items-center gap-2">
+            {!user ? (
+              <button
+                onClick={onOpenAuth}
+                className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white text-black text-[11px] font-mono font-medium hover:bg-white/90 transition-all uppercase"
+              >
+                <Shield size={11} />
+                <span>SIGN IN TO SECURE</span>
+              </button>
+            ) : (
+              <div className="pointer-events-auto hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/80 backdrop-blur-md border border-white/15 text-[11px] font-mono text-white/70 uppercase">
+                <Shield size={11} className="text-white" />
+                <span>VAULT: {user.name || user.email.split('@')[0]}</span>
+              </div>
+            )}
+
+            {/* Captured Photos Counter */}
+            <div className="pointer-events-auto flex items-center gap-2.5 px-3 py-1.5 rounded-md bg-black/80 backdrop-blur-md border border-white/15">
+              <span className="text-[11px] font-mono tracking-wider text-white/40 uppercase">
+                CAPTURED:
+              </span>
+              <span className="text-[12px] font-mono font-bold text-white">
+                {captureCount}
+              </span>
+            </div>
           </div>
         </div>
 

@@ -73,6 +73,14 @@ class Settings(BaseSettings):
     storage_dir: str = "./captured_photos"
     device: str = "cuda"
 
+    # ── Authentication & Security ──────────────────────────────────
+    jwt_secret_key: str = Field(
+        default="canchalant-secret-key-atlas-auth-2026",
+        validation_alias=AliasChoices("jwt_secret_key", "JWT_SECRET_KEY", "SECRET_KEY"),
+    )
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60 * 24 * 30  # 30 days
+
     @property
     def clean_mongodb_uri(self) -> str:
         """Sanitize URI by stripping surrounding quotes and whitespace."""

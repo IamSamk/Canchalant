@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Tag,
   ArrowUpRight,
+  Lock,
 } from 'lucide-react'
 import { getGallery, searchGallery, deleteMoment, resolveImageUrl } from '../api'
 
@@ -70,7 +71,7 @@ function formatMomentTime(isoStr) {
   }
 }
 
-export default function Gallery({ onCountChange }) {
+export default function Gallery({ user, onCountChange, onOpenAuth }) {
   const [moments, setMoments] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -83,6 +84,10 @@ export default function Gallery({ onCountChange }) {
   const [lightboxItem, setLightboxItem] = useState(null)
 
   const fetchGallery = useCallback(async () => {
+    if (!user) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
       const data = await getGallery(page, 30, {
@@ -96,17 +101,20 @@ export default function Gallery({ onCountChange }) {
         onCountChange(data.total)
       }
     } catch (err) {
+      if (err.message === 'UNAUTHORIZED' && onOpenAuth) {
+        onOpenAuth()
+      }
       console.error('Gallery fetch error:', err)
     } finally {
       setLoading(false)
     }
-  }, [page, classFilter, activeTag, onCountChange])
+  }, [user, page, classFilter, activeTag, onCountChange, onOpenAuth])
 
   useEffect(() => {
-    if (!searchResults) {
+    if (!searchResults && user) {
       fetchGallery()
     }
-  }, [fetchGallery, searchResults])
+  }, [fetchGallery, searchResults, user])
 
   // Semantic Vector Search
   const handleSearch = useCallback(async () => {
@@ -164,6 +172,30 @@ export default function Gallery({ onCountChange }) {
   }, [moments, searchResults])
 
   const displayMoments = searchResults || moments
+
+  if (!user) {
+    return (
+      <div className="w-full min-h-[calc(100vh-3.5rem)] bg-black text-white flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center border border-white/10 rounded-2xl p-8 bg-white/[0.02]">
+          <div className="w-14 h-14 rounded-full border border-white/20 flex items-center justify-center mx-auto mb-5 text-white/70">
+            <Lock size={22} />
+          </div>
+          <h2 className="text-xl font-semibold text-white tracking-tight mb-2">
+            Private Vault Encrypted
+          </h2>
+          <p className="text-[13px] text-white/50 leading-relaxed font-sans mb-6">
+            All captured moments in this vault are privately partitioned on MongoDB Atlas and isolated to their owner. Sign in or register to browse your personal memory vault.
+          </p>
+          <button
+            onClick={onOpenAuth}
+            className="w-full py-3 rounded-lg text-[13px] font-semibold bg-white text-black hover:bg-white/90 transition-all font-sans"
+          >
+            SIGN IN OR CREATE VAULT
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full min-h-[calc(100vh-3.5rem)] bg-black text-white px-6 lg:px-12 py-8">

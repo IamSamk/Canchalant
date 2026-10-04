@@ -27,11 +27,14 @@ from backend.app.core.config import get_settings
 from backend.app.models.schemas import Classification, MomentDocument
 from backend.app.services import storage
 
+from uuid import uuid4
+
 logger = logging.getLogger(__name__)
 
-# Local backup store path
+# Local backup store paths
 _LOCAL_STORE_PATH = Path(__file__).resolve().parents[2] / "data" / "moments_store.json"
 _LOCAL_STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
+_LOCAL_USERS_PATH = Path(__file__).resolve().parents[2] / "data" / "users_store.json"
 
 _client: AsyncIOMotorClient | None = None
 _db: AsyncIOMotorDatabase | None = None
@@ -59,6 +62,27 @@ def _write_local_store(data: List[Dict[str, Any]]):
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception as e:
         logger.error("Error writing local moments store: %s", e)
+
+
+def _read_local_users() -> List[Dict[str, Any]]:
+    """Read local users backup file."""
+    if not _LOCAL_USERS_PATH.exists():
+        return []
+    try:
+        with open(_LOCAL_USERS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error("Error reading local users store: %s", e)
+        return []
+
+
+def _write_local_users(data: List[Dict[str, Any]]):
+    """Write to local users backup file."""
+    try:
+        with open(_LOCAL_USERS_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error("Error writing local users store: %s", e)
 
 
 def _cosine_similarity(a: List[float], b: List[float]) -> float:
@@ -127,6 +151,12 @@ async def get_collection():
     return db[settings.mongodb_collection]
 
 
+async def get_users_collection():
+    """Retrieve users collection."""
+    db = await get_database()
+    return db["users"]
+
+
 async def close_database():
     """Gracefully terminate database connections."""
     global _client, _db, _atlas_available
@@ -136,6 +166,103 @@ async def close_database():
         _db = None
         _atlas_available = None
         logger.info("MongoDB connection closed.")
+
+
+# ── User Account Operations ────────────────────────────────────────
+
+async def create_user(email: str, hashed_password: str, name: str = "") -> Dict[str, Any]:
+    """Create a new user in MongoDB Atlas and local backup store."""
+    from datetime import datetime, timezone
+    user_id = str(uuid4())
+    user_doc = {
+        "id": user_id,
+        "email": email.strip().lower(),
+        "hashed_password": hashed_password,
+        "name": name.strip(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Save to local users backup
+    local_users = _read_local_users()
+    local_users = [u for u in local_users if u.get("email") != user_doc["email"]]
+    local_users.append(user_doc)
+    _write_local_users(local_users)
+
+    # Save to Atlas
+    try:
+        coll = await get_users_collection()
+        # Create unique index on email if not exists
+        try:
+            await coll.create_index("email", unique=True)
+        except Exception:
+            pass
+        await coll.insert_one(user_doc.copy())
+    except Exception as e:
+        logger.warning("Atlas user insert skipped (%s); saved to local store.", e)
+
+    # Claim any legacy unassigned moments for the first user
+    try:
+        coll = await get_collection()
+        await coll.update_many(
+            {"$or": [{"user_id": None}, {"user_id": {"$exists": False}}]},
+            {"$set": {"user_id": user_id}},
+        )
+    except Exception:
+        pass
+
+    local_moments = _read_local_store()
+    for m in local_moments:
+        if not m.get("user_id"):
+            m["user_id"] = user_id
+    _write_local_store(local_moments)
+
+    return user_doc
+
+
+async def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+    """Find user document by normalized email address."""
+    clean_email = email.strip().lower()
+
+    # Try Atlas first
+    try:
+        coll = await get_users_collection()
+        doc = await coll.find_one({"email": clean_email})
+        if doc:
+            doc.pop("_id", None)
+            return doc
+    except Exception as e:
+        logger.debug("Atlas get_user_by_email fallback: %s", e)
+
+    # Fallback to local store
+    for u in _read_local_users():
+        if u.get("email") == clean_email:
+            res = u.copy()
+            res.pop("_id", None)
+            return res
+
+    return None
+
+
+async def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+    """Find user document by user UUID."""
+    # Try Atlas first
+    try:
+        coll = await get_users_collection()
+        doc = await coll.find_one({"id": user_id})
+        if doc:
+            doc.pop("_id", None)
+            return doc
+    except Exception as e:
+        logger.debug("Atlas get_user_by_id fallback: %s", e)
+
+    # Fallback to local store
+    for u in _read_local_users():
+        if u.get("id") == user_id:
+            res = u.copy()
+            res.pop("_id", None)
+            return res
+
+    return None
 
 
 # ── CRUD Operations ───────────────────────────────────────────────
@@ -160,8 +287,8 @@ async def save_moment(moment: MomentDocument) -> str:
         coll = await get_collection()
         await coll.insert_one(doc.copy())
         logger.info(
-            "Saved moment to Atlas: id=%s url=%s class=%s conf=%.2f",
-            moment.id, moment.cloudinary_url, moment.classification, moment.confidence,
+            "Saved moment to Atlas: id=%s user=%s url=%s class=%s conf=%.2f",
+            moment.id, moment.user_id, moment.cloudinary_url, moment.classification, moment.confidence,
         )
     except Exception as e:
         logger.warning("Atlas insert skipped (%s); saved to local backup store.", e)
@@ -170,16 +297,19 @@ async def save_moment(moment: MomentDocument) -> str:
 
 
 async def get_moments(
+    user_id: Optional[str] = None,
     page: int = 1,
     limit: int = 20,
     classification: Optional[Classification] = None,
     tag: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """Paginated moments gallery with optional classification and tag filters."""
+    """Paginated moments gallery scoped to user with optional filters."""
     # Attempt Atlas first
     try:
         coll = await get_collection()
         query: Dict[str, Any] = {}
+        if user_id:
+            query["user_id"] = user_id
         if classification:
             query["classification"] = classification.value
         if tag:
@@ -197,6 +327,8 @@ async def get_moments(
 
     # Local fallback
     items = _read_local_store()
+    if user_id:
+        items = [m for m in items if m.get("user_id") == user_id]
     if classification:
         items = [m for m in items if m.get("classification") == classification.value]
     if tag:
@@ -219,28 +351,29 @@ async def get_moments(
 
     return cleaned
 
-
 async def search_moments(
     query_vector: List[float],
+    user_id: Optional[str] = None,
     limit: int = 20,
 ) -> List[Dict[str, Any]]:
     """
     Vector search using MongoDB Atlas `$vectorSearch` aggregation stage.
     Falls back to local cosine ranking if Atlas is unavailable.
+    Scoped to authenticated user.
     """
     settings = get_settings()
 
     # 1. Atlas Vector Search
     try:
         coll = await get_collection()
-        pipeline = [
+        pipeline: List[Dict[str, Any]] = [
             {
                 "$vectorSearch": {
                     "index": settings.mongodb_vector_index_name,
                     "path": "embedding",
                     "queryVector": query_vector,
-                    "numCandidates": min(limit * 5, 200),
-                    "limit": limit,
+                    "numCandidates": min(limit * 10, 200),
+                    "limit": limit * 2 if user_id else limit,
                 }
             },
             {
@@ -248,18 +381,38 @@ async def search_moments(
                     "_id": 0,
                     "embedding": 0,
                     "score": {"$meta": "vectorSearchScore"},
+                    "user_id": 1,
+                    "id": 1,
+                    "filename": 1,
+                    "cloudinary_url": 1,
+                    "cloudinary_public_id": 1,
+                    "filepath": 1,
+                    "classification": 1,
+                    "confidence": 1,
+                    "caption": 1,
+                    "tags": 1,
+                    "filter_meta": 1,
+                    "created_at": 1,
                 }
             },
         ]
+        if user_id:
+            pipeline.append({"$match": {"user_id": user_id}})
+
         cursor = coll.aggregate(pipeline)
         results = await cursor.to_list(length=limit)
         if results:
-            return results
+            for r in results:
+                r.pop("embedding", None)
+            return results[:limit]
     except Exception as e:
         logger.debug("Atlas vector search fallback triggered: %s", e)
 
     # 2. Local vector similarity ranking fallback
     items = _read_local_store()
+    if user_id:
+        items = [m for m in items if m.get("user_id") == user_id]
+
     scored = []
     for item in items:
         emb = item.get("embedding")
@@ -275,10 +428,11 @@ async def search_moments(
     return scored[:limit]
 
 
-async def delete_moment(moment_id: str) -> bool:
+async def delete_moment(moment_id: str, user_id: Optional[str] = None) -> bool:
     """
     Delete moment by ID — removes record from MongoDB/local store
     and removes the asset from Cloudinary.
+    Restricted to owning user if user_id is provided.
     """
     found_doc: Optional[Dict[str, Any]] = None
 
@@ -286,6 +440,8 @@ async def delete_moment(moment_id: str) -> bool:
     local_data = _read_local_store()
     for item in local_data:
         if item.get("id") == moment_id:
+            if user_id and item.get("user_id") and item.get("user_id") != user_id:
+                return False
             found_doc = item
             break
     if found_doc:
@@ -295,7 +451,10 @@ async def delete_moment(moment_id: str) -> bool:
     # Delete from Atlas
     try:
         coll = await get_collection()
-        atlas_doc = await coll.find_one_and_delete({"id": moment_id})
+        del_query: Dict[str, Any] = {"id": moment_id}
+        if user_id:
+            del_query["user_id"] = user_id
+        atlas_doc = await coll.find_one_and_delete(del_query)
         if atlas_doc and not found_doc:
             found_doc = atlas_doc
     except Exception as e:
@@ -312,13 +471,16 @@ async def delete_moment(moment_id: str) -> bool:
 
 
 async def get_total_count(
+    user_id: Optional[str] = None,
     classification: Optional[Classification] = None,
     tag: Optional[str] = None,
 ) -> int:
-    """Retrieve total count of matching moments."""
+    """Retrieve total count of matching moments scoped to user."""
     try:
         coll = await get_collection()
         query: Dict[str, Any] = {}
+        if user_id:
+            query["user_id"] = user_id
         if classification:
             query["classification"] = classification.value
         if tag:
@@ -326,6 +488,8 @@ async def get_total_count(
         return await coll.count_documents(query)
     except Exception:
         items = _read_local_store()
+        if user_id:
+            items = [m for m in items if m.get("user_id") == user_id]
         if classification:
             items = [m for m in items if m.get("classification") == classification.value]
         if tag:

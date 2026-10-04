@@ -57,6 +57,7 @@ class FilterResult(BaseModel):
 class MomentDocument(BaseModel):
     """Schema for a captured moment stored in MongoDB Atlas."""
     id: str = Field(default_factory=lambda: str(uuid4()))
+    user_id: Optional[str] = None
     filename: str
     cloudinary_url: str = ""
     cloudinary_public_id: Optional[str] = None
@@ -70,6 +71,32 @@ class MomentDocument(BaseModel):
     created_at: str = Field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
+
+
+# ── User & Authentication Models ──────────────────────────────────
+
+class UserRegisterRequest(BaseModel):
+    email: str
+    password: str
+    name: Optional[str] = ""
+
+
+class UserLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class UserProfile(BaseModel):
+    id: str
+    email: str
+    name: str = ""
+    created_at: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserProfile
 
 
 # ── API Request / Response Models ─────────────────────────────────

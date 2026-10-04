@@ -12,10 +12,11 @@ import logging
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.app.core.config import get_settings
 from backend.app.models.schemas import (
+    AuthResponse,
     CaptureMode,
     Classification,
     FrameAnalyzeRequest,
@@ -23,9 +24,13 @@ from backend.app.models.schemas import (
     HealthResponse,
     MomentDocument,
     SemanticSearchRequest,
+    UserLoginRequest,
+    UserProfile,
+    UserRegisterRequest,
     VLMResult,
 )
-from backend.app.services import db, embedder, storage, vlm
+from backend.app.services import auth, db, embedder, storage, vlm
+from backend.app.services.auth import get_current_user, get_optional_user
 from backend.app.services.filter import analyze_frame
 
 logger = logging.getLogger(__name__)
@@ -33,18 +38,108 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["canchalant"])
 
 
+# ── Authentication Endpoints ──────────────────────────────────────
+
+@router.post("/auth/register", response_model=AuthResponse)
+async def register(request: UserRegisterRequest):
+    """Register a new private account on MongoDB Atlas."""
+    email = request.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Valid email address is required.",
+        )
+    if len(request.password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters.",
+        )
+
+    existing_user = await db.get_user_by_email(email)
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An account with this email already exists. Please sign in.",
+        )
+
+    hashed_pw = auth.hash_password(request.password)
+    user_doc = await db.create_user(
+        email=email,
+        hashed_password=hashed_pw,
+        name=request.name or email.split("@")[0],
+    )
+
+    token = auth.create_access_token({
+        "sub": user_doc["id"],
+        "email": user_doc["email"],
+        "name": user_doc.get("name", ""),
+    })
+
+    return AuthResponse(
+        access_token=token,
+        token_type="bearer",
+        user=UserProfile(
+            id=user_doc["id"],
+            email=user_doc["email"],
+            name=user_doc.get("name", ""),
+            created_at=user_doc.get("created_at", ""),
+        ),
+    )
+
+
+@router.post("/auth/login", response_model=AuthResponse)
+async def login(request: UserLoginRequest):
+    """Authenticate with email and password."""
+    email = request.email.strip().lower()
+    user_doc = await db.get_user_by_email(email)
+
+    if not user_doc or not auth.verify_password(request.password, user_doc.get("hashed_password", "")):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = auth.create_access_token({
+        "sub": user_doc["id"],
+        "email": user_doc["email"],
+        "name": user_doc.get("name", ""),
+    })
+
+    return AuthResponse(
+        access_token=token,
+        token_type="bearer",
+        user=UserProfile(
+            id=user_doc["id"],
+            email=user_doc["email"],
+            name=user_doc.get("name", ""),
+            created_at=user_doc.get("created_at", ""),
+        ),
+    )
+
+
+@router.get("/auth/me", response_model=UserProfile)
+async def get_me(current_user: UserProfile = Depends(get_current_user)):
+    """Retrieve current authenticated user profile."""
+    return current_user
+
+
 # ── POST /api/frame/analyze ───────────────────────────────────────
 
 @router.post("/frame/analyze", response_model=FrameAnalyzeResponse)
-async def analyze_frame_endpoint(request: FrameAnalyzeRequest):
+async def analyze_frame_endpoint(
+    request: FrameAnalyzeRequest,
+    current_user: Optional[UserProfile] = Depends(get_optional_user),
+):
     """
     End-to-End Analysis Pipeline:
     1. Decode base64 camera frame.
     2. Run heuristic pre-filter (Laplacian blur & gaze check).
     3. Run open-weight Gemma Vision (PaliGemma) via HF Serverless API.
-    4. Generate 512-dim CLIP dense vector embedding.
+    4. Generate 384-dim dense vector embedding.
     5. Upload candidate capture to Cloudinary folder `canchalant_snaps`.
-    6. Persist moment document with HTTPS Cloudinary URL in MongoDB Atlas.
+    6. Persist moment document with HTTPS Cloudinary URL in MongoDB Atlas,
+       associated with authenticated user.
     """
     # Step 1: Decode image
     try:
@@ -94,7 +189,7 @@ async def analyze_frame_endpoint(request: FrameAnalyzeRequest):
                 message=f"Vision model classified as {vlm_result.classification.value}",
             )
 
-    # Step 4: Generate CLIP vector embedding
+    # Step 4: Generate dense vector embedding
     embedding = embedder.embed_image(image_bytes)
 
     # Step 5: Upload to Cloudinary
@@ -108,6 +203,7 @@ async def analyze_frame_endpoint(request: FrameAnalyzeRequest):
     # Step 6: Persist in MongoDB Atlas
     moment = MomentDocument(
         filename=filename,
+        user_id=current_user.id if current_user else None,
         cloudinary_url=cloudinary_url,
         cloudinary_public_id=cloudinary_public_id,
         filepath=cloudinary_url,  # Web-accessible HTTPS URL
@@ -122,8 +218,9 @@ async def analyze_frame_endpoint(request: FrameAnalyzeRequest):
     await db.save_moment(moment)
 
     logger.info(
-        "✨ Moment Captured: %s [%s @ %.2f] — URL: %s",
+        "✨ Moment Captured: %s [user=%s %s @ %.2f] — URL: %s",
         filename,
+        moment.user_id,
         vlm_result.classification.value,
         vlm_result.confidence,
         cloudinary_url,
@@ -146,8 +243,9 @@ async def get_gallery(
     limit: int = 20,
     classification: str | None = None,
     tag: str | None = None,
+    current_user: UserProfile = Depends(get_current_user),
 ):
-    """Paginated moments gallery with optional classification and mood tag filters."""
+    """Paginated private moments gallery scoped exclusively to authenticated user."""
     cls_filter = None
     if classification:
         try:
@@ -156,10 +254,17 @@ async def get_gallery(
             raise HTTPException(400, f"Invalid classification: {classification}")
 
     moments = await db.get_moments(
-        page=page, limit=limit,
-        classification=cls_filter, tag=tag,
+        user_id=current_user.id,
+        page=page,
+        limit=limit,
+        classification=cls_filter,
+        tag=tag,
     )
-    total = await db.get_total_count(classification=cls_filter, tag=tag)
+    total = await db.get_total_count(
+        user_id=current_user.id,
+        classification=cls_filter,
+        tag=tag,
+    )
 
     return {
         "moments": moments,
@@ -173,17 +278,24 @@ async def get_gallery(
 # ── POST /api/gallery/search ─────────────────────────────────────
 
 @router.post("/gallery/search")
-async def semantic_search(request: SemanticSearchRequest):
+async def semantic_search(
+    request: SemanticSearchRequest,
+    current_user: UserProfile = Depends(get_current_user),
+):
     """
     Semantic vector search using MongoDB Atlas `$vectorSearch`:
-    Converts query text to 512-dim CLIP embedding and returns
-    cosine-ranked moments.
+    Converts query text to dense embedding and returns
+    cosine-ranked moments belonging exclusively to authenticated user.
     """
     if not request.query.strip():
         raise HTTPException(400, "Search query cannot be empty.")
 
     query_vector = embedder.embed_text(request.query)
-    results = await db.search_moments(query_vector, limit=request.limit)
+    results = await db.search_moments(
+        query_vector,
+        user_id=current_user.id,
+        limit=request.limit,
+    )
 
     return {
         "query": request.query,
@@ -195,11 +307,14 @@ async def semantic_search(request: SemanticSearchRequest):
 # ── DELETE /api/gallery/{id} ──────────────────────────────────────
 
 @router.delete("/gallery/{moment_id}")
-async def delete_moment(moment_id: str):
-    """Delete moment from MongoDB Atlas and Cloudinary media storage."""
-    deleted = await db.delete_moment(moment_id)
+async def delete_moment(
+    moment_id: str,
+    current_user: UserProfile = Depends(get_current_user),
+):
+    """Delete moment from MongoDB Atlas and Cloudinary — restricted to owner."""
+    deleted = await db.delete_moment(moment_id, user_id=current_user.id)
     if not deleted:
-        raise HTTPException(404, f"Moment not found: {moment_id}")
+        raise HTTPException(404, f"Moment not found or unauthorized: {moment_id}")
     return {"status": "deleted", "id": moment_id}
 
 
